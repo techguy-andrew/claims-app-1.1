@@ -1,0 +1,45 @@
+{
+  "name": "barron-agency",
+  "version": "1.0.0",
+  "description": "Barron Agency Foundation - Portable UI Component System",
+  "author": "Andrew Barron",
+  "license": "MIT",
+  "main": "index.js",
+  "keywords": [
+    "nextjs",
+    "react",
+    "components",
+    "ui",
+    "agency",
+    "foundation"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.10",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.4.0",
+    "framer-motion": "^12.23.24",
+    "react-dropzone": "^14.3.8"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "next": ">=13.0.0",
+    "tailwindcss": ">=3.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0 || ^19.0.0",
+    "@types/react-dom": "^18.0.0 || ^19.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "install-deps": "pnpm install",
+    "integrate": "node scripts/integrate.js",
+    "check-compatibility": "node scripts/check-compatibility.js",
+    "setup": "pnpm install && node scripts/integrate.js"
+  }
+}

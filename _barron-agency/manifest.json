@@ -1,0 +1,113 @@
+{
+  "name": "barron-agency",
+  "version": "1.0.0",
+  "description": "Barron Agency Foundation - Complete UI Component System",
+  "created": "2024-11-23",
+  "author": "Andrew Barron",
+  "components": {
+    "total": 23,
+    "categories": {
+      "presentational": [
+        "Badge",
+        "Button",
+        "Card",
+        "Input",
+        "Skeleton",
+        "Toast",
+        "Toaster"
+      ],
+      "layout": [
+        "Footer",
+        "Header",
+        "Navigation",
+        "PageHeader",
+        "PageSection",
+        "Sidebar"
+      ],
+      "dialogs": [
+        "Dialog",
+        "ConfirmationDialog",
+        "DropdownMenu"
+      ],
+      "smart": [
+        "ItemCard",
+        "ItemCardSkeleton",
+        "ItemForm",
+        "FileGallery",
+        "LoginForm",
+        "SettingsForm"
+      ],
+      "utility": [
+        "EmptyState"
+      ]
+    }
+  },
+  "icons": {
+    "total": 12,
+    "list": [
+      "CancelIcon",
+      "ChevronRightIcon",
+      "CloseIcon",
+      "DownloadIcon",
+      "FileIcon",
+      "GripVerticalIcon",
+      "LoadingIcon",
+      "MenuIcon",
+      "PlusIcon",
+      "SaveIcon",
+      "SpinnerIcon",
+      "UploadIcon"
+    ]
+  },
+  "hooks": [
+    "useItems",
+    "useAttachments"
+  ],
+  "themes": [
+    "default",
+    "client-a",
+    "client-b",
+    "christmas",
+    "halloween"
+  ],
+  "utilities": [
+    "cn (class merge)",
+    "validations",
+    "constants"
+  ],
+  "features": {
+    "optimisticUI": true,
+    "dragAndDrop": true,
+    "fileUploads": true,
+    "inlineEditing": true,
+    "theming": true,
+    "typescript": true,
+    "responsive": true
+  },
+  "dependencies": {
+    "required": [
+      "@tanstack/react-query",
+      "clsx",
+      "tailwind-merge"
+    ],
+    "optional": [
+      "framer-motion",
+      "react-dropzone"
+    ],
+    "peer": [
+      "react",
+      "react-dom",
+      "next",
+      "tailwindcss"
+    ]
+  },
+  "structure": {
+    "components": "app/components/",
+    "icons": "app/icons/",
+    "styles": "app/styles/",
+    "hooks": "lib/hooks/",
+    "utils": "lib/",
+    "types": "types/",
+    "config": "config/"
+  }
+}

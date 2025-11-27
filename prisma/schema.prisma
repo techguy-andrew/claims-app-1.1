@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  claims    Claim[]
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+model Claim {
+  id               String      @id @default(cuid())
+  title            String
+  description      String?
+  amount           Decimal?
+  status           ClaimStatus @default(PENDING)
+  claimNumber      String      @unique @default(cuid())
+  customer         String?
+  adjustorName     String?
+  adjustorPhone    String?
+  adjustorEmail    String?
+  claimantName     String?
+  claimantPhone    String?
+  claimantEmail    String?
+  claimantAddress  String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  claimantId       String
+  claimant         User        @relation(fields: [claimantId], references: [id], onDelete: Cascade)
+  items            Item[]
+
+  @@index([claimNumber])
+  @@index([claimantId])
+  @@index([status, createdAt])
+}
+
+model Item {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  claimId     String
+  claim       Claim        @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
+
+  @@index([claimId, order])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  itemId       String
+  filename     String
+  url          String
+  thumbnailUrl String?
+  mimeType     String
+  size         Int
+  width        Int?
+  height       Int?
+  publicId     String
+  version      String?
+  format       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  item         Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+enum ClaimStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CLOSED
+}

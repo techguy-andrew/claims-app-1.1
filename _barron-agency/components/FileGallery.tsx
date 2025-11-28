@@ -112,7 +112,7 @@ export function FileGallery({
                 <div className="aspect-square rounded-lg border bg-muted overflow-hidden">
                   {isImage(attachment.type) ? (
                     <img
-                      src={attachment.url}
+                      src={attachment.thumbnailUrl || attachment.url}
                       alt={attachment.name}
                       className={cn(
                         "w-full h-full object-cover",

@@ -21,6 +21,7 @@ import {
   useReorderItems,
   type ItemWithAttachments,
 } from '@/lib/hooks/useItems'
+import { useAddAttachments, useRemoveAttachment } from '@/lib/hooks/useAttachments'
 
 // Draft item type that can be mixed with real items
 interface DraftItem {
@@ -55,6 +56,8 @@ interface ReorderableItemProps {
   onSave: (id: string, data: { title: string; description: string }) => void
   onCancel: (id: string) => void
   onDelete: (id: string) => void
+  onFilesAdded?: (itemId: string, files: File[]) => void
+  onFileRemove?: (itemId: string, attachmentId: string) => void
   onDragStart?: () => void
   onDragEnd?: () => void
   constraintsRef?: React.RefObject<HTMLDivElement | null>
@@ -70,6 +73,8 @@ function ReorderableItem({
   onSave,
   onCancel,
   onDelete,
+  onFilesAdded,
+  onFileRemove,
   onDragStart,
   onDragEnd,
   constraintsRef,
@@ -88,8 +93,11 @@ function ReorderableItem({
       id: a.id,
       name: a.filename,
       url: a.url,
+      thumbnailUrl: a.thumbnailUrl,
       type: a.mimeType,
       size: a.size,
+      width: a.width,
+      height: a.height,
     }))
   }, [item, itemIsDraft])
 
@@ -145,6 +153,8 @@ function ReorderableItem({
             onDelete={itemIsDraft ? undefined : () => onDelete(item.id)}
             autoFocus={autoFocus}
             attachments={attachments}
+            onFilesAdded={itemIsDraft ? undefined : (files) => onFilesAdded?.(item.id, files)}
+            onFileRemove={itemIsDraft ? undefined : (attachmentId) => onFileRemove?.(item.id, attachmentId)}
             isSaving={isSaving}
             titlePlaceholder="Enter item title..."
             descriptionPlaceholder="Enter item description..."
@@ -180,6 +190,8 @@ export default function ClaimDetailPage({
   const reorderItemsMutation = useReorderItems()
   const updateClaimMutation = useUpdateClaim()
   const deleteClaimMutation = useDeleteClaim()
+  const addAttachmentsMutation = useAddAttachments()
+  const removeAttachmentMutation = useRemoveAttachment()
 
   // Auto-scroll effect when dragging near viewport edges
   useEffect(() => {
@@ -385,6 +397,36 @@ export default function ClaimDetailPage({
     }
   }
 
+  // Handle adding files to an item
+  const handleFilesAdded = async (itemId: string, files: File[]) => {
+    try {
+      await addAttachmentsMutation.mutateAsync({
+        claimId,
+        itemId,
+        files,
+      })
+      toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded`)
+    } catch (error) {
+      toast.error('Failed to upload files')
+      console.error('Upload error:', error)
+    }
+  }
+
+  // Handle removing a file from an item
+  const handleFileRemove = async (itemId: string, attachmentId: string) => {
+    try {
+      await removeAttachmentMutation.mutateAsync({
+        claimId,
+        itemId,
+        attachmentId,
+      })
+      toast.success('File deleted')
+    } catch (error) {
+      toast.error('Failed to delete file')
+      console.error('Delete file error:', error)
+    }
+  }
+
   // Handle reordering items with optimistic update
   // Only reorder real items, not draft items
   const handleReorder = async (newOrder: DisplayItem[]) => {
@@ -522,6 +564,8 @@ export default function ClaimDetailPage({
                             onSave={handleSave}
                             onCancel={handleCancel}
                             onDelete={handleDelete}
+                            onFilesAdded={handleFilesAdded}
+                            onFileRemove={handleFileRemove}
                             onDragStart={handleDragStart}
                             onDragEnd={handleDragEnd}
                             constraintsRef={constraintsRef}

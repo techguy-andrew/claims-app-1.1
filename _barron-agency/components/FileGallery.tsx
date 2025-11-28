@@ -71,6 +71,24 @@ export function FileGallery({
     setFileToDelete(null)
   }
 
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url)
+      const blob = await response.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(blobUrl)
+    } catch (error) {
+      // Fallback to opening in new tab if download fails
+      window.open(url, '_blank')
+    }
+  }
+
   return (
     <div className="w-full space-y-4">
       {/* Dropzone */}
@@ -178,8 +196,8 @@ export function FileGallery({
           <button
             className="absolute right-14 top-4 p-0 m-0 border-0 bg-transparent cursor-pointer outline-none focus:outline-none hover:opacity-80 transition-opacity"
             onClick={() => {
-              if (selectedFile?.url) {
-                window.open(selectedFile.url, "_blank")
+              if (selectedFile?.url && selectedFile?.name) {
+                handleDownload(selectedFile.url, selectedFile.name)
               }
             }}
             aria-label="Download file"
@@ -206,8 +224,8 @@ export function FileGallery({
                 <Button
                   className="mt-4"
                   onClick={() => {
-                    if (selectedFile?.url) {
-                      window.open(selectedFile.url, "_blank")
+                    if (selectedFile?.url && selectedFile?.name) {
+                      handleDownload(selectedFile.url, selectedFile.name)
                     }
                   }}
                 >

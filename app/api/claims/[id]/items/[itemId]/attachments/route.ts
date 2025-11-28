@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { cloudinary, getThumbnailUrl, uploadOptions } from '@/lib/cloudinary'
+import { cloudinary, getThumbnailUrl } from '@/lib/cloudinary'
 
 // POST /api/claims/[id]/items/[itemId]/attachments - Upload files
 export async function POST(
@@ -40,6 +40,11 @@ export async function POST(
         const bytes = await file.arrayBuffer()
         const buffer = Buffer.from(bytes)
 
+        // Determine resource type based on MIME type
+        // Images use 'image', everything else (PDFs, docs) use 'raw'
+        const isImage = file.type.startsWith('image/')
+        const resourceType = isImage ? 'image' : 'raw'
+
         // Upload to Cloudinary
         const uploadResult = await new Promise<{
           public_id: string
@@ -54,9 +59,9 @@ export async function POST(
           cloudinary.uploader
             .upload_stream(
               {
-                ...uploadOptions,
                 folder: `claims/${claimId}/${itemId}`,
                 public_id: `${Date.now()}-${file.name.replace(/\.[^/.]+$/, '')}`,
+                resource_type: resourceType,
               },
               (error, result) => {
                 if (error) reject(error)
@@ -66,8 +71,7 @@ export async function POST(
             .end(buffer)
         })
 
-        // Generate thumbnail URL for images
-        const isImage = uploadResult.resource_type === 'image'
+        // Generate thumbnail URL for images only
         const thumbnailUrl = isImage
           ? getThumbnailUrl(uploadResult.public_id, uploadResult.format)
           : null

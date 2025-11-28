@@ -24,7 +24,10 @@ export async function GET() {
   } catch (error) {
     console.error('Failed to fetch claims:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch claims' },
+      {
+        error: 'Failed to fetch claims',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }

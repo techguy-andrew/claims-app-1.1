@@ -91,7 +91,7 @@ export interface DropdownMenuContentProps extends React.HTMLAttributes<HTMLDivEl
 }
 
 const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
-  ({ className, align = "center", sideOffset = 4, children, onDrag, onDragStart, onDragEnd, ...props }, ref) => {
+  ({ className, align = "center", sideOffset = 4, children }, ref) => {
     const { open, onOpenChange, triggerRef } = useDropdownMenuContext()
     const contentRef = React.useRef<HTMLDivElement>(null)
     const [position, setPosition] = React.useState({ top: 0, left: 0 })
@@ -187,7 +187,6 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
               top: position.top,
               left: position.left,
             }}
-            {...props}
           >
             {children}
           </motion.div>

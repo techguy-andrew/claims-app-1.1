@@ -171,7 +171,7 @@ export interface SelectContentProps
 }
 
 const SelectContent = React.forwardRef<HTMLDivElement, SelectContentProps>(
-  ({ className, align = "start", sideOffset = 4, children, onDrag, onDragStart, onDragEnd, ...props }, ref) => {
+  ({ className, align = "start", sideOffset = 4, children }, ref) => {
     const { open, onOpenChange, triggerRef } = useSelectContext()
     const contentRef = React.useRef<HTMLDivElement>(null)
     const [position, setPosition] = React.useState({ top: 0, left: 0, width: 0 })
@@ -270,7 +270,6 @@ const SelectContent = React.forwardRef<HTMLDivElement, SelectContentProps>(
               left: position.left,
               minWidth: position.width,
             }}
-            {...props}
           >
             {children}
           </motion.div>

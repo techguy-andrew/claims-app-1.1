@@ -7,6 +7,8 @@ export interface Attachment {
   size: number
   width?: number | null
   height?: number | null
+  publicId: string      // Cloudinary public ID for signed URL generation
+  format?: string | null // File format/extension
   file?: File // For local file handling before upload
 }
 

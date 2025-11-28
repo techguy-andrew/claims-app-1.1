@@ -98,6 +98,8 @@ function ReorderableItem({
       size: a.size,
       width: a.width,
       height: a.height,
+      publicId: a.publicId,
+      format: a.format,
     }))
   }, [item, itemIsDraft])
 

@@ -1,139 +1,113 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { cloudinary, getThumbnailUrl } from '@/lib/cloudinary'
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { uploadToR2, getPublicUrl, getImageVariantUrl } from "@/lib/r2";
 
-// POST /api/claims/[id]/items/[itemId]/attachments - Upload files
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+/**
+ * POST /api/claims/[id]/items/[itemId]/attachments
+ * Upload file to R2 and save attachment metadata
+ */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
-    const { id: claimId, itemId } = await params
+    const { id: claimId, itemId } = await params;
 
     // Verify item exists and belongs to the claim
     const item = await prisma.item.findFirst({
       where: { id: itemId, claimId },
-    })
+    });
 
     if (!item) {
-      return NextResponse.json(
-        { error: 'Item not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
     // Parse FormData
-    const formData = await request.formData()
-    const files = formData.getAll('files') as File[]
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
 
-    if (!files || files.length === 0) {
-      return NextResponse.json(
-        { error: 'No files provided' },
-        { status: 400 }
-      )
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Upload each file to Cloudinary and create attachment records
-    const attachments = await Promise.all(
-      files.map(async (file) => {
-        // Convert file to buffer
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "File size exceeds 100MB limit" },
+        { status: 400 }
+      );
+    }
 
-        // Determine resource type based on MIME type
-        // Images use 'image', everything else (PDFs, docs) use 'raw'
-        const isImage = file.type.startsWith('image/')
-        const resourceType = isImage ? 'image' : 'raw'
+    // Generate unique key
+    const ext = file.name.split(".").pop() || "bin";
+    const randomId = Math.random().toString(36).substring(2, 10);
+    const key = `claims/${claimId}/${itemId}/${Date.now()}-${randomId}.${ext}`;
 
-        // Upload to Cloudinary
-        const uploadResult = await new Promise<{
-          public_id: string
-          secure_url: string
-          format: string
-          bytes: number
-          width?: number
-          height?: number
-          version: number
-          resource_type: string
-        }>((resolve, reject) => {
-          cloudinary.uploader
-            .upload_stream(
-              {
-                folder: `claims/${claimId}/${itemId}`,
-                public_id: `${Date.now()}-${file.name.replace(/\.[^/.]+$/, '')}`,
-                resource_type: resourceType,
-              },
-              (error, result) => {
-                if (error) reject(error)
-                else resolve(result as typeof result & { public_id: string; secure_url: string; format: string; bytes: number; version: number; resource_type: string })
-              }
-            )
-            .end(buffer)
-        })
+    // Upload to R2
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await uploadToR2(key, buffer, file.type);
 
-        // Generate thumbnail URL for images only
-        const thumbnailUrl = isImage
-          ? getThumbnailUrl(uploadResult.public_id, uploadResult.format)
-          : null
+    // Generate URLs
+    const url = getPublicUrl(key);
+    const isImage = file.type.startsWith("image/");
+    const thumbnailUrl = isImage ? getImageVariantUrl(key, 150) : null;
 
-        // Create attachment record in database
-        const attachment = await prisma.attachment.create({
-          data: {
-            itemId,
-            filename: file.name,
-            url: uploadResult.secure_url,
-            thumbnailUrl,
-            mimeType: file.type,
-            size: uploadResult.bytes,
-            width: uploadResult.width || null,
-            height: uploadResult.height || null,
-            publicId: uploadResult.public_id,
-            version: String(uploadResult.version),
-            format: uploadResult.format,
-          },
-        })
+    // Save attachment metadata to database
+    const attachment = await prisma.attachment.create({
+      data: {
+        itemId,
+        filename: file.name,
+        url,
+        thumbnailUrl,
+        mimeType: file.type,
+        size: file.size,
+        width: null,
+        height: null,
+        publicId: key,
+        version: null,
+        format: ext,
+      },
+    });
 
-        return attachment
-      })
-    )
-
-    return NextResponse.json(attachments)
+    return NextResponse.json(attachment, { status: 201 });
   } catch (error) {
-    console.error('Failed to upload files:', error)
+    console.error("Failed to upload attachment:", error);
     return NextResponse.json(
-      { error: 'Failed to upload files' },
+      { error: "Failed to upload attachment" },
       { status: 500 }
-    )
+    );
   }
 }
 
-// GET /api/claims/[id]/items/[itemId]/attachments - Get all attachments for an item
+/**
+ * GET /api/claims/[id]/items/[itemId]/attachments
+ * Get all attachments for an item
+ */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
-    const { id: claimId, itemId } = await params
+    const { id: claimId, itemId } = await params;
 
     // Verify item exists and belongs to the claim
     const item = await prisma.item.findFirst({
       where: { id: itemId, claimId },
       include: { attachments: true },
-    })
+    });
 
     if (!item) {
-      return NextResponse.json(
-        { error: 'Item not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
-    return NextResponse.json(item.attachments)
+    return NextResponse.json(item.attachments);
   } catch (error) {
-    console.error('Failed to fetch attachments:', error)
+    console.error("Failed to fetch attachments:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch attachments' },
+      { error: "Failed to fetch attachments" },
       { status: 500 }
-    )
+    );
   }
 }

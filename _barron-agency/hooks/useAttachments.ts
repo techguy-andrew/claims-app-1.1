@@ -37,6 +37,8 @@ export function useAddAttachments() {
         url: URL.createObjectURL(file),
         type: file.type,
         size: file.size,
+        publicId: '', // Mock value
+        format: null,
       }))
 
       return { itemId: data.itemId, attachments: uploadedAttachments }
@@ -56,6 +58,8 @@ export function useAddAttachments() {
         url: URL.createObjectURL(file),
         type: file.type,
         size: file.size,
+        publicId: '', // Temp value
+        format: null,
         file, // Include file for upload tracking
       }))
 

@@ -1,20 +1,22 @@
-'use client'
+"use client";
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Attachment as PrismaAttachment } from '@prisma/client'
-import type { ClaimWithItems } from './useClaims'
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Attachment as PrismaAttachment } from "@prisma/client";
+import type { ClaimWithItems } from "./useClaims";
 
 // UI-friendly attachment type that maps from Prisma schema
 export interface Attachment {
-  id: string
-  name: string          // Maps from filename
-  url: string
-  thumbnailUrl?: string | null
-  type: string          // Maps from mimeType
-  size: number
-  width?: number | null
-  height?: number | null
-  file?: File           // For local file handling before upload
+  id: string;
+  name: string; // Maps from filename
+  url: string;
+  thumbnailUrl?: string | null;
+  type: string; // Maps from mimeType
+  size: number;
+  width?: number | null;
+  height?: number | null;
+  publicId: string; // R2 key or Cloudinary public ID
+  format?: string | null; // File format/extension
+  file?: File; // For local file handling before upload
 }
 
 // Helper to convert Prisma attachment to UI attachment
@@ -28,52 +30,74 @@ export function toUIAttachment(prismaAttachment: PrismaAttachment): Attachment {
     size: prismaAttachment.size,
     width: prismaAttachment.width,
     height: prismaAttachment.height,
-  }
+    publicId: prismaAttachment.publicId,
+    format: prismaAttachment.format,
+  };
 }
 
 interface AddAttachmentsData {
-  claimId: string
-  itemId: string
-  files: File[]
+  claimId: string;
+  itemId: string;
+  files: File[];
 }
 
 interface RemoveAttachmentData {
-  claimId: string
-  itemId: string
-  attachmentId: string
+  claimId: string;
+  itemId: string;
+  attachmentId: string;
 }
 
-// Add Attachments Mutation with Optimistic Update
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+// Add Attachments Mutation with Server-Side Upload to R2
 export function useAddAttachments() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: AddAttachmentsData): Promise<PrismaAttachment[]> => {
-      const formData = new FormData()
-      data.files.forEach((file) => formData.append('files', file))
+    mutationFn: async (
+      data: AddAttachmentsData
+    ): Promise<PrismaAttachment[]> => {
+      const uploadedAttachments: PrismaAttachment[] = [];
 
-      const response = await fetch(
-        `/api/claims/${data.claimId}/items/${data.itemId}/attachments`,
-        {
-          method: 'POST',
-          body: formData,
+      for (const file of data.files) {
+        // Validate file size on client
+        if (file.size > MAX_FILE_SIZE) {
+          throw new Error(`${file.name} exceeds 100MB limit`);
         }
-      )
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to upload files')
+        // Upload file via FormData to our API (server handles R2 upload)
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch(
+          `/api/claims/${data.claimId}/items/${data.itemId}/attachments`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || `Failed to upload ${file.name}`);
+        }
+
+        const newAttachment: PrismaAttachment = await response.json();
+        uploadedAttachments.push(newAttachment);
       }
 
-      return response.json()
+      return uploadedAttachments;
     },
 
     onMutate: async (data) => {
       // Cancel outgoing queries for this claim
-      await queryClient.cancelQueries({ queryKey: ['claims', data.claimId] })
+      await queryClient.cancelQueries({ queryKey: ["claims", data.claimId] });
 
       // Snapshot previous value
-      const previousClaim = queryClient.getQueryData<ClaimWithItems>(['claims', data.claimId])
+      const previousClaim = queryClient.getQueryData<ClaimWithItems>([
+        "claims",
+        data.claimId,
+      ]);
 
       // Create temporary attachments for optimistic update
       const tempAttachments: Attachment[] = data.files.map((file) => ({
@@ -85,158 +109,182 @@ export function useAddAttachments() {
         size: file.size,
         width: null,
         height: null,
+        publicId: "", // Temp value until upload completes
+        format: null,
         file, // Include file for upload tracking
-      }))
+      }));
 
       // Optimistically add attachments to the item
-      queryClient.setQueryData<ClaimWithItems>(['claims', data.claimId], (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          items: old.items.map((item) =>
-            item.id === data.itemId
-              ? {
-                  ...item,
-                  attachments: [
-                    ...item.attachments,
-                    // Convert UI attachments back to Prisma-like format for cache
-                    ...tempAttachments.map((att) => ({
-                      id: att.id,
-                      itemId: data.itemId,
-                      filename: att.name,
-                      url: att.url,
-                      thumbnailUrl: att.thumbnailUrl ?? null,
-                      mimeType: att.type,
-                      size: att.size,
-                      width: att.width ?? null,
-                      height: att.height ?? null,
-                      publicId: '',
-                      version: null,
-                      format: null,
-                      createdAt: new Date(),
-                      updatedAt: new Date(),
-                    })),
-                  ],
-                }
-              : item
-          ),
+      queryClient.setQueryData<ClaimWithItems>(
+        ["claims", data.claimId],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.map((item) =>
+              item.id === data.itemId
+                ? {
+                    ...item,
+                    attachments: [
+                      ...item.attachments,
+                      // Convert UI attachments back to Prisma-like format for cache
+                      ...tempAttachments.map((att) => ({
+                        id: att.id,
+                        itemId: data.itemId,
+                        filename: att.name,
+                        url: att.url,
+                        thumbnailUrl: att.thumbnailUrl ?? null,
+                        mimeType: att.type,
+                        size: att.size,
+                        width: att.width ?? null,
+                        height: att.height ?? null,
+                        publicId: "",
+                        version: null,
+                        format: null,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                      })),
+                    ],
+                  }
+                : item
+            ),
+          };
         }
-      })
+      );
 
-      return { previousClaim, tempAttachments, itemId: data.itemId }
+      return { previousClaim, tempAttachments, itemId: data.itemId };
     },
 
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousClaim) {
-        queryClient.setQueryData(['claims', variables.claimId], context.previousClaim)
+        queryClient.setQueryData(
+          ["claims", variables.claimId],
+          context.previousClaim
+        );
       }
 
       // Clean up object URLs
       context?.tempAttachments.forEach((att) => {
-        if (att.url.startsWith('blob:')) {
-          URL.revokeObjectURL(att.url)
+        if (att.url.startsWith("blob:")) {
+          URL.revokeObjectURL(att.url);
         }
-      })
+      });
     },
 
     onSuccess: (result, variables, context) => {
       // Replace temp attachments with real ones from server
-      queryClient.setQueryData<ClaimWithItems>(['claims', variables.claimId], (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          items: old.items.map((item) => {
-            if (item.id === variables.itemId) {
-              // Remove temp attachments and add real ones
-              const existingAttachments = item.attachments.filter(
-                (att) => !att.id.startsWith('temp-')
-              )
-              return {
-                ...item,
-                attachments: [...existingAttachments, ...result],
+      queryClient.setQueryData<ClaimWithItems>(
+        ["claims", variables.claimId],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.map((item) => {
+              if (item.id === variables.itemId) {
+                // Remove temp attachments and add real ones
+                const existingAttachments = item.attachments.filter(
+                  (att) => !att.id.startsWith("temp-")
+                );
+                return {
+                  ...item,
+                  attachments: [...existingAttachments, ...result],
+                };
               }
-            }
-            return item
-          }),
+              return item;
+            }),
+          };
         }
-      })
+      );
 
       // Clean up temp object URLs
       context?.tempAttachments.forEach((att) => {
-        if (att.url.startsWith('blob:')) {
-          URL.revokeObjectURL(att.url)
+        if (att.url.startsWith("blob:")) {
+          URL.revokeObjectURL(att.url);
         }
-      })
+      });
     },
-  })
+  });
 }
 
 // Remove Attachment Mutation with Optimistic Update
 export function useRemoveAttachment() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: RemoveAttachmentData): Promise<{ success: boolean }> => {
+    mutationFn: async (
+      data: RemoveAttachmentData
+    ): Promise<{ success: boolean }> => {
       const response = await fetch(
         `/api/claims/${data.claimId}/items/${data.itemId}/attachments/${data.attachmentId}`,
         {
-          method: 'DELETE',
+          method: "DELETE",
         }
-      )
+      );
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to delete attachment')
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete attachment");
       }
 
-      return response.json()
+      return response.json();
     },
 
     onMutate: async (data) => {
       // Cancel outgoing queries
-      await queryClient.cancelQueries({ queryKey: ['claims', data.claimId] })
+      await queryClient.cancelQueries({ queryKey: ["claims", data.claimId] });
 
       // Snapshot previous value
-      const previousClaim = queryClient.getQueryData<ClaimWithItems>(['claims', data.claimId])
+      const previousClaim = queryClient.getQueryData<ClaimWithItems>([
+        "claims",
+        data.claimId,
+      ]);
 
       // Get the attachment being removed (for cleanup)
-      const item = previousClaim?.items.find((i) => i.id === data.itemId)
-      const removedAttachment = item?.attachments.find((a) => a.id === data.attachmentId)
+      const item = previousClaim?.items.find((i) => i.id === data.itemId);
+      const removedAttachment = item?.attachments.find(
+        (a) => a.id === data.attachmentId
+      );
 
       // Optimistically remove attachment
-      queryClient.setQueryData<ClaimWithItems>(['claims', data.claimId], (old) => {
-        if (!old) return old
-        return {
-          ...old,
-          items: old.items.map((item) =>
-            item.id === data.itemId
-              ? {
-                  ...item,
-                  attachments: item.attachments.filter(
-                    (att) => att.id !== data.attachmentId
-                  ),
-                }
-              : item
-          ),
+      queryClient.setQueryData<ClaimWithItems>(
+        ["claims", data.claimId],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.map((item) =>
+              item.id === data.itemId
+                ? {
+                    ...item,
+                    attachments: item.attachments.filter(
+                      (att) => att.id !== data.attachmentId
+                    ),
+                  }
+                : item
+            ),
+          };
         }
-      })
+      );
 
-      return { previousClaim, removedAttachment }
+      return { previousClaim, removedAttachment };
     },
 
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousClaim) {
-        queryClient.setQueryData(['claims', variables.claimId], context.previousClaim)
+        queryClient.setQueryData(
+          ["claims", variables.claimId],
+          context.previousClaim
+        );
       }
     },
 
     onSettled: (data, error, variables, context) => {
       // Clean up object URL if it was a blob URL
-      if (context?.removedAttachment?.url.startsWith('blob:')) {
-        URL.revokeObjectURL(context.removedAttachment.url)
+      if (context?.removedAttachment?.url.startsWith("blob:")) {
+        URL.revokeObjectURL(context.removedAttachment.url);
       }
     },
-  })
+  });
 }

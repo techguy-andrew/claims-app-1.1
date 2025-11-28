@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useCallback } from "react"
+import dynamic from "next/dynamic"
 import { useDropzone } from "react-dropzone"
 import { CancelIcon } from "../icons/CancelIcon"
 import { DownloadIcon } from "../icons/DownloadIcon"
@@ -8,6 +9,31 @@ import { FileIcon } from "../icons/FileIcon"
 import { UploadIcon } from "../icons/UploadIcon"
 import { SpinnerIcon } from "../icons/SpinnerIcon"
 import { Button } from "./Button"
+
+// Dynamic imports to avoid SSR issues with pdf.js (uses browser APIs like DOMMatrix)
+const PdfViewer = dynamic(
+  () => import("./PdfViewer").then((mod) => ({ default: mod.PdfViewer })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center p-8 text-muted-foreground">
+        Loading PDF viewer...
+      </div>
+    ),
+  }
+)
+
+const PdfThumbnail = dynamic(
+  () => import("./PdfThumbnail").then((mod) => ({ default: mod.PdfThumbnail })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center">
+        <SpinnerIcon className="h-6 w-6 text-muted-foreground" />
+      </div>
+    ),
+  }
+)
 import {
   Dialog,
   DialogContent,
@@ -58,6 +84,8 @@ export function FileGallery({
   })
 
   const isImage = (type: string) => type.startsWith("image/")
+  const isPdf = (type: string) => type === "application/pdf"
+  const isVideo = (type: string) => type.startsWith("video/")
 
   const handleRemoveClick = (e: React.MouseEvent, attachment: Attachment) => {
     e.stopPropagation()
@@ -71,21 +99,35 @@ export function FileGallery({
     setFileToDelete(null)
   }
 
-  const handleDownload = async (url: string, filename: string) => {
+  const handleDownload = async (attachment: Attachment) => {
     try {
-      const response = await fetch(url)
+      // Build query params with publicId for server-side signed URL generation
+      const resourceType = attachment.type.startsWith('image/') ? 'image' : 'raw'
+      const params = new URLSearchParams({
+        publicId: attachment.publicId,
+        resourceType,
+        filename: attachment.name,
+      })
+      if (attachment.format) params.set('format', attachment.format)
+
+      const response = await fetch(`/api/download?${params}`)
+      if (!response.ok) {
+        throw new Error('Download failed')
+      }
+
       const blob = await response.blob()
       const blobUrl = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = blobUrl
-      link.download = filename
+      link.download = attachment.name
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(blobUrl)
     } catch (error) {
+      console.error('Download error:', error)
       // Fallback to opening in new tab if download fails
-      window.open(url, '_blank')
+      window.open(attachment.url, '_blank')
     }
   }
 
@@ -137,6 +179,26 @@ export function FileGallery({
                         isUploading && "opacity-50"
                       )}
                     />
+                  ) : isPdf(attachment.type) && !isUploading ? (
+                    <PdfThumbnail url={attachment.url} width={200} />
+                  ) : isVideo(attachment.type) && !isUploading ? (
+                    <div className="relative w-full h-full">
+                      <video
+                        src={attachment.url}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                        preload="metadata"
+                      />
+                      {/* Play icon overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
+                          <svg className="w-6 h-6 text-foreground ml-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center p-4">
                       <FileIcon className={cn(
@@ -196,8 +258,8 @@ export function FileGallery({
           <button
             className="absolute right-14 top-4 p-0 m-0 border-0 bg-transparent cursor-pointer outline-none focus:outline-none hover:opacity-80 transition-opacity"
             onClick={() => {
-              if (selectedFile?.url && selectedFile?.name) {
-                handleDownload(selectedFile.url, selectedFile.name)
+              if (selectedFile) {
+                handleDownload(selectedFile)
               }
             }}
             aria-label="Download file"
@@ -214,18 +276,32 @@ export function FileGallery({
                 alt={selectedFile.name}
                 className="w-full h-auto max-h-[70vh] object-contain"
               />
+            ) : selectedFile && isPdf(selectedFile.type) ? (
+              <div className="max-h-[70vh] overflow-auto">
+                <PdfViewer url={selectedFile.url} maxWidth={700} />
+              </div>
+            ) : selectedFile && isVideo(selectedFile.type) ? (
+              <video
+                controls
+                autoPlay
+                className="w-full max-h-[70vh] rounded-lg"
+                src={selectedFile.url}
+              >
+                <source src={selectedFile.url} type={selectedFile.type} />
+                Your browser does not support the video tag.
+              </video>
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
                 <FileIcon className="h-24 w-24 text-muted-foreground mb-4" />
                 <p className="text-lg font-medium">{selectedFile?.name}</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {selectedFile && (selectedFile.size / 1024).toFixed(1)} KB
+                  {selectedFile && (selectedFile.size / 1024 / 1024).toFixed(2)} MB
                 </p>
                 <Button
                   className="mt-4"
                   onClick={() => {
-                    if (selectedFile?.url && selectedFile?.name) {
-                      handleDownload(selectedFile.url, selectedFile.name)
+                    if (selectedFile) {
+                      handleDownload(selectedFile)
                     }
                   }}
                 >

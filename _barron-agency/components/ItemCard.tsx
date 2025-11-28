@@ -445,7 +445,7 @@ export function ItemCard({
           onClick={() => itemId && setIsExpanded(!isExpanded)}
           className={cn(
             "text-muted-foreground",
-            !itemId && "opacity-50 cursor-not-allowed"
+            itemId ? "cursor-pointer" : "opacity-50 cursor-not-allowed"
           )}
           disabled={!itemId}
         >

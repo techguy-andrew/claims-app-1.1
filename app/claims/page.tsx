@@ -144,7 +144,7 @@ export default function ClaimsPage() {
                   <CardHeader>
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-lg font-mono">
-                        #{claim.title}
+                        #{claim.claimNumber}
                       </CardTitle>
                       <Badge variant={getStatusVariant(claim.status)}>
                         {formatStatus(claim.status)}

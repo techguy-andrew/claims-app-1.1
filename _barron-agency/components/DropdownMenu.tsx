@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { createPortal } from "react-dom"
+import { motion, AnimatePresence } from "framer-motion"
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -140,14 +141,20 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         }
       }
 
+      const handleScroll = () => {
+        onOpenChange(false)
+      }
+
       if (open) {
         document.addEventListener("mousedown", handleClickOutside)
         document.addEventListener("keydown", handleKeyDown)
+        window.addEventListener("scroll", handleScroll, true)
       }
 
       return () => {
         document.removeEventListener("mousedown", handleClickOutside)
         document.removeEventListener("keydown", handleKeyDown)
+        window.removeEventListener("scroll", handleScroll, true)
       }
     }, [open, onOpenChange, triggerRef])
 
@@ -156,28 +163,36 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
       setMounted(true)
     }, [])
 
-    if (!open || !mounted) return null
+    if (!mounted) return null
 
     return createPortal(
-      <div
-        ref={(node) => {
-          if (typeof ref === "function") ref(node)
-          else if (ref) ref.current = node
-          contentRef.current = node
-        }}
-        className={cn(
-          "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
-          className
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={(node) => {
+              if (typeof ref === "function") ref(node)
+              else if (ref) ref.current = node
+              contentRef.current = node
+            }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.1 }}
+            className={cn(
+              "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+              className
+            )}
+            style={{
+              position: "fixed",
+              top: position.top,
+              left: position.left,
+            }}
+            {...props}
+          >
+            {children}
+          </motion.div>
         )}
-        style={{
-          position: "fixed",
-          top: position.top,
-          left: position.left,
-        }}
-        {...props}
-      >
-        {children}
-      </div>,
+      </AnimatePresence>,
       document.body
     )
   }

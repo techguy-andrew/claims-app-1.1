@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const {
-      title,
+      claimNumber,
       customer,
       adjustorName,
       adjustorPhone,
@@ -46,9 +46,9 @@ export async function POST(request: Request) {
       claimantAddress
     } = body
 
-    if (!title || typeof title !== 'string' || title.trim() === '') {
+    if (!claimNumber || typeof claimNumber !== 'string' || claimNumber.trim() === '') {
       return NextResponse.json(
-        { error: 'Title is required' },
+        { error: 'Claim number is required' },
         { status: 400 }
       )
     }
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
     const claim = await prisma.claim.create({
       data: {
-        title: title.trim(),
+        claimNumber: claimNumber.trim(),
         customer: customer?.trim() || null,
         adjustorName: adjustorName?.trim() || null,
         adjustorPhone: adjustorPhone?.trim() || null,

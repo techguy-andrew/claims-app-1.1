@@ -12,7 +12,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export interface ClaimFormData {
-  title: string
+  claimNumber: string
   customer: string
   adjustorName: string
   adjustorPhone: string
@@ -41,7 +41,7 @@ export function ClaimForm({
   onDirtyChange,
 }: ClaimFormProps) {
   const [formData, setFormData] = React.useState<ClaimFormData>({
-    title: initialData?.title ?? '',
+    claimNumber: initialData?.claimNumber ?? '',
     customer: initialData?.customer ?? '',
     adjustorName: initialData?.adjustorName ?? '',
     adjustorPhone: initialData?.adjustorPhone ?? '',
@@ -71,7 +71,7 @@ export function ClaimForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.title.trim()) return
+    if (!formData.claimNumber.trim()) return
     onFormSubmit(formData)
   }
 
@@ -83,16 +83,16 @@ export function ClaimForm({
       {/* Claim Number */}
       <div className="space-y-2">
         <label
-          htmlFor="title"
+          htmlFor="claimNumber"
           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
         >
           Claim Number <span className="text-destructive">*</span>
         </label>
         <Input
-          id="title"
-          name="title"
+          id="claimNumber"
+          name="claimNumber"
           placeholder="Enter claim number"
-          value={formData.title}
+          value={formData.claimNumber}
           onChange={handleChange}
           required
           disabled={isSubmitting}
@@ -255,7 +255,7 @@ export function ClaimForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting || !formData.title.trim()}>
+        <Button type="submit" disabled={isSubmitting || !formData.claimNumber.trim()}>
           {isSubmitting ? 'Creating...' : 'Create Claim'}
         </Button>
       </div>

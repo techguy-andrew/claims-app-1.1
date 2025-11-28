@@ -1,19 +1,18 @@
 'use client'
 
-import React, { useState, useRef, use, useMemo } from 'react'
+import React, { useState, useRef, use, useMemo, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Reorder, useDragControls } from 'framer-motion'
+import { Reorder, useDragControls, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { toast, Toaster, ToastProvider, ToastRegistry } from '@/_barron-agency/components/Toast'
 import { PlusIcon } from '@/_barron-agency/icons/PlusIcon'
 import { GripVerticalIcon } from '@/_barron-agency/icons/GripVerticalIcon'
 import { ItemCard } from '@/_barron-agency/components/ItemCard'
+import { ClaimDetailsCard, type ClaimDetailsData } from '@/_barron-agency/components/ClaimDetailsCard'
 import { Button } from '@/_barron-agency/components/Button'
-import { PageHeader } from '@/_barron-agency/components/PageHeader'
 import { EmptyState } from '@/_barron-agency/components/EmptyState'
-import { Badge } from '@/_barron-agency/components/Badge'
 import { Card, CardContent } from '@/_barron-agency/components/Card'
 import { Skeleton } from '@/_barron-agency/components/Skeleton'
-import { useClaim, ClaimStatus } from '@/lib/hooks/useClaims'
+import { useClaim, useUpdateClaim } from '@/lib/hooks/useClaims'
 import {
   useCreateItem,
   useUpdateItem,
@@ -42,27 +41,9 @@ function isDraftItem(item: DisplayItem): item is DraftItem {
   return 'isDraft' in item && item.isDraft === true
 }
 
-// Map claim status to badge variant
-function getStatusVariant(status: ClaimStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
-  switch (status) {
-    case 'APPROVED':
-      return 'default'
-    case 'PENDING':
-      return 'secondary'
-    case 'UNDER_REVIEW':
-      return 'outline'
-    case 'REJECTED':
-      return 'destructive'
-    case 'CLOSED':
-      return 'secondary'
-    default:
-      return 'outline'
-  }
-}
-
-function formatStatus(status: ClaimStatus): string {
-  return status.replace('_', ' ')
-}
+// Auto-scroll configuration
+const SCROLL_THRESHOLD = 80  // pixels from viewport edge to start scrolling
+const MAX_SCROLL_SPEED = 12  // max pixels per frame
 
 // ReorderableItem component for drag-and-drop - handles both draft and real items
 interface ReorderableItemProps {
@@ -73,6 +54,9 @@ interface ReorderableItemProps {
   onSave: (id: string, data: { title: string; description: string }) => void
   onCancel: (id: string) => void
   onDelete: (id: string) => void
+  onDragStart?: () => void
+  onDragEnd?: () => void
+  constraintsRef?: React.RefObject<HTMLDivElement | null>
   autoFocus?: boolean
   isSaving?: boolean
 }
@@ -85,6 +69,9 @@ function ReorderableItem({
   onSave,
   onCancel,
   onDelete,
+  onDragStart,
+  onDragEnd,
+  constraintsRef,
   autoFocus,
   isSaving,
 }: ReorderableItemProps) {
@@ -105,19 +92,31 @@ function ReorderableItem({
     }))
   }, [item, itemIsDraft])
 
-  // Only animate on initial appear for new draft items
-  const shouldAnimateIn = itemIsDraft && !isSaving
-
   return (
     <Reorder.Item
       value={item}
       dragListener={false}
       dragControls={dragControls}
-      initial={shouldAnimateIn ? { opacity: 0, y: -8 } : false}
-      animate={{ opacity: 1, y: 0 }}
-      transition={shouldAnimateIn ? { duration: 0.2, ease: 'easeOut' } : { duration: 0 }}
+      dragConstraints={constraintsRef}
+      dragElastic={0.1}
+      dragMomentum={false}
+      layout
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{
+        layout: {
+          type: "spring",
+          stiffness: 300,
+          damping: 35,
+          mass: 0.8,
+        },
+        opacity: { duration: 0.2 }
+      }}
       className="relative"
       onContextMenu={(e) => e.preventDefault()}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
     >
       <div className="flex items-start gap-2 w-full">
         {/* Drag Handle - disabled for draft items */}
@@ -164,14 +163,73 @@ export default function ClaimDetailPage({
   const { data: claim, isLoading, error } = useClaim(claimId)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [savingItemId, setSavingItemId] = useState<string | null>(null)
+  const [savingClaim, setSavingClaim] = useState(false)
   const [draftItem, setDraftItem] = useState<DraftItem | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const stableKeysRef = useRef<Map<string, string>>(new Map())
+  const pointerYRef = useRef(0)
+  const animationFrameRef = useRef<number | null>(null)
+  const constraintsRef = useRef<HTMLDivElement>(null)
 
   // React Query mutations
   const createItemMutation = useCreateItem()
   const updateItemMutation = useUpdateItem()
   const deleteItemMutation = useDeleteItem()
   const reorderItemsMutation = useReorderItems()
+  const updateClaimMutation = useUpdateClaim()
+
+  // Auto-scroll effect when dragging near viewport edges
+  useEffect(() => {
+    if (!isDragging) {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+      return
+    }
+
+    const handlePointerMove = (e: PointerEvent) => {
+      pointerYRef.current = e.clientY
+    }
+
+    const scrollLoop = () => {
+      const viewportHeight = window.innerHeight
+      const pointerY = pointerYRef.current
+
+      // Near top edge - scroll up
+      if (pointerY > 0 && pointerY < SCROLL_THRESHOLD) {
+        const speed = ((SCROLL_THRESHOLD - pointerY) / SCROLL_THRESHOLD) * MAX_SCROLL_SPEED
+        window.scrollBy(0, -speed)
+      }
+      // Near bottom edge - scroll down
+      else if (pointerY > viewportHeight - SCROLL_THRESHOLD && pointerY < viewportHeight) {
+        const speed = ((pointerY - (viewportHeight - SCROLL_THRESHOLD)) / SCROLL_THRESHOLD) * MAX_SCROLL_SPEED
+        window.scrollBy(0, speed)
+      }
+
+      animationFrameRef.current = requestAnimationFrame(scrollLoop)
+    }
+
+    document.addEventListener('pointermove', handlePointerMove)
+    animationFrameRef.current = requestAnimationFrame(scrollLoop)
+
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove)
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+    }
+  }, [isDragging])
+
+  // Drag state handlers
+  const handleDragStart = useCallback(() => {
+    setIsDragging(true)
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false)
+  }, [])
 
   // Combine draft item with real items into a single array for unified rendering
   const realItems = claim?.items ?? []
@@ -295,6 +353,23 @@ export default function ClaimDetailPage({
     }
   }
 
+  // Handle saving claim details
+  const handleSaveClaimDetails = async (data: Partial<ClaimDetailsData>) => {
+    setSavingClaim(true)
+    try {
+      await updateClaimMutation.mutateAsync({
+        id: claimId,
+        ...data,
+      })
+      toast.success('Claim details saved')
+    } catch (error) {
+      toast.error('Failed to save claim details')
+      console.error('Save claim error:', error)
+    } finally {
+      setSavingClaim(false)
+    }
+  }
+
   // Handle reordering items with optimistic update
   // Only reorder real items, not draft items
   const handleReorder = async (newOrder: DisplayItem[]) => {
@@ -322,17 +397,14 @@ export default function ClaimDetailPage({
   if (error) {
     return (
       <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
-        <div className="max-w-4xl mx-auto">
-          <PageHeader title="Claim Not Found" />
+        <div className="max-w-4xl mx-auto space-y-6">
           <EmptyState
-            title="Error loading claim"
+            title="Claim Not Found"
             description="The claim could not be found or there was an error loading it."
           />
-          <div className="mt-4">
-            <Link href="/claims">
-              <Button variant="outline">Back to Claims</Button>
-            </Link>
-          </div>
+          <Link href="/claims">
+            <Button variant="outline">Back to Claims</Button>
+          </Link>
         </div>
       </div>
     )
@@ -373,51 +445,25 @@ export default function ClaimDetailPage({
             ← Back to Claims
           </Link>
 
-          {/* Claim Header */}
-          <PageHeader
-            title={claim?.title ?? 'Claim'}
-            description={claim?.description ?? undefined}
-          />
-
           {/* Claim Info Card */}
-          <Card>
-            <CardContent className="p-6 space-y-4">
-              <div className="flex flex-wrap items-center gap-4">
-                <Badge variant={getStatusVariant(claim?.status ?? 'PENDING')}>
-                  {formatStatus(claim?.status ?? 'PENDING')}
-                </Badge>
-                <span className="font-mono text-sm text-muted-foreground">
-                  #{claim?.claimNumber}
-                </span>
-                {claim?.customer && (
-                  <span className="text-sm text-muted-foreground">
-                    {claim.customer}
-                  </span>
-                )}
-              </div>
-
-              {/* Adjustor Info */}
-              {(claim?.adjustorName || claim?.adjustorPhone || claim?.adjustorEmail) && (
-                <div className="pt-4 border-t space-y-1 text-sm">
-                  <p className="font-medium">Adjustor</p>
-                  {claim?.adjustorName && <p className="text-muted-foreground">{claim.adjustorName}</p>}
-                  {claim?.adjustorPhone && <p className="text-muted-foreground">Phone: {claim.adjustorPhone}</p>}
-                  {claim?.adjustorEmail && <p className="text-muted-foreground">Email: {claim.adjustorEmail}</p>}
-                </div>
-              )}
-
-              {/* Claimant Info */}
-              {(claim?.claimantName || claim?.claimantPhone || claim?.claimantEmail || claim?.claimantAddress) && (
-                <div className="pt-4 border-t space-y-1 text-sm">
-                  <p className="font-medium">Claimant</p>
-                  {claim?.claimantName && <p className="text-muted-foreground">{claim.claimantName}</p>}
-                  {claim?.claimantPhone && <p className="text-muted-foreground">Phone: {claim.claimantPhone}</p>}
-                  {claim?.claimantEmail && <p className="text-muted-foreground">Email: {claim.claimantEmail}</p>}
-                  {claim?.claimantAddress && <p className="text-muted-foreground">Address: {claim.claimantAddress}</p>}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {claim && (
+            <ClaimDetailsCard
+              claim={{
+                claimNumber: claim.claimNumber,
+                status: claim.status,
+                customer: claim.customer,
+                adjustorName: claim.adjustorName,
+                adjustorPhone: claim.adjustorPhone,
+                adjustorEmail: claim.adjustorEmail,
+                claimantName: claim.claimantName,
+                claimantPhone: claim.claimantPhone,
+                claimantEmail: claim.claimantEmail,
+                claimantAddress: claim.claimantAddress,
+              }}
+              onSave={handleSaveClaimDetails}
+              isSaving={savingClaim}
+            />
+          )}
 
           {/* Items Section */}
           <div className="flex items-center justify-between">
@@ -438,31 +484,40 @@ export default function ClaimDetailPage({
                 description="Click 'Add Item' to add items to this claim."
               />
             ) : (
-              <Reorder.Group
-                axis="y"
-                values={displayItems}
-                onReorder={handleReorder}
-                className="flex flex-col gap-4 w-full touch-pan-y select-none"
-              >
-                {displayItems.map((item) => {
-                  const stableKey = stableKeysRef.current.get(item.id) || item.id
+              <LayoutGroup>
+                <div ref={constraintsRef}>
+                  <AnimatePresence mode="popLayout">
+                    <Reorder.Group
+                      axis="y"
+                      values={displayItems}
+                      onReorder={handleReorder}
+                      className="flex flex-col gap-4 w-full touch-pan-y select-none"
+                    >
+                      {displayItems.map((item) => {
+                        const stableKey = stableKeysRef.current.get(item.id) || item.id
 
-                  return (
-                    <ReorderableItem
-                      key={stableKey}
-                      item={item}
-                      claimId={claimId}
-                      editingItemId={editingItemId}
-                      onEdit={handleEdit}
-                      onSave={handleSave}
-                      onCancel={handleCancel}
-                      onDelete={handleDelete}
-                      autoFocus={editingItemId === item.id}
-                      isSaving={savingItemId === item.id}
-                    />
-                  )
-                })}
-              </Reorder.Group>
+                        return (
+                          <ReorderableItem
+                            key={stableKey}
+                            item={item}
+                            claimId={claimId}
+                            editingItemId={editingItemId}
+                            onEdit={handleEdit}
+                            onSave={handleSave}
+                            onCancel={handleCancel}
+                            onDelete={handleDelete}
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
+                            constraintsRef={constraintsRef}
+                            autoFocus={editingItemId === item.id}
+                            isSaving={savingItemId === item.id}
+                          />
+                        )
+                      })}
+                    </Reorder.Group>
+                  </AnimatePresence>
+                </div>
+              </LayoutGroup>
             )}
           </div>
         </div>

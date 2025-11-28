@@ -24,11 +24,10 @@ model User {
 
 model Claim {
   id               String      @id @default(cuid())
-  title            String
+  claimNumber      String      @unique
   description      String?
   amount           Decimal?
   status           ClaimStatus @default(PENDING)
-  claimNumber      String      @unique @default(cuid())
   customer         String?
   adjustorName     String?
   adjustorPhone    String?

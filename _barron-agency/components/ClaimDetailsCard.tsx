@@ -8,18 +8,12 @@ import { SaveIcon } from '../icons/SaveIcon'
 import { CancelIcon } from '../icons/CancelIcon'
 import { ConfirmationDialog } from './ConfirmationDialog'
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from './Select'
-import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from './DropdownMenu'
+import { ClaimStatusSelector } from './ClaimStatusSelector'
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { ClaimStatus } from '@prisma/client'
@@ -28,15 +22,6 @@ import { ClaimStatus } from '@prisma/client'
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
-
-// Status options for dropdown
-const STATUS_OPTIONS: { value: ClaimStatus; label: string }[] = [
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'UNDER_REVIEW', label: 'Under Review' },
-  { value: 'APPROVED', label: 'Approved' },
-  { value: 'REJECTED', label: 'Rejected' },
-  { value: 'CLOSED', label: 'Closed' },
-]
 
 export interface ClaimDetailsData {
   claimNumber: string
@@ -318,24 +303,11 @@ export function ClaimDetailsCard({
         <div className="space-y-4 pr-16">
           {/* Status Row - Always editable */}
           <div className="flex flex-wrap items-center gap-4">
-            <Select
-              value={claim.status}
-              onValueChange={(value) => onSave?.({ status: value as ClaimStatus })}
+            <ClaimStatusSelector
+              status={claim.status}
+              onStatusChange={(status) => onSave?.({ status })}
               disabled={isSaving}
-            >
-              <SelectTrigger className="h-8 w-[140px] cursor-pointer">
-                <SelectValue>
-                  {(value) => STATUS_OPTIONS.find(o => o.value === value)?.label || value}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           {/* Claim Number */}

@@ -56,7 +56,7 @@ export default function ClaimsPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-6 py-4">
+        <div className="max-w-[1200px] w-full mx-auto px-6 py-4">
           <PageHeader title="Claims" />
           <EmptyState
             title="Error loading claims"
@@ -69,7 +69,7 @@ export default function ClaimsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-4 space-y-6">
+      <div className="max-w-[1200px] w-full mx-auto px-6 py-4 space-y-6">
         <PageHeader
           title="Claims"
           description="View and manage all insurance claims"

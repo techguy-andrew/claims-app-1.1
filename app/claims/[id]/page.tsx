@@ -455,8 +455,8 @@ export default function ClaimDetailPage({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="min-h-screen bg-background">
+        <div className="max-w-[1200px] w-full mx-auto px-6 py-4 space-y-6">
           <EmptyState
             title="Claim Not Found"
             description="The claim could not be found or there was an error loading it."
@@ -471,8 +471,8 @@ export default function ClaimDetailPage({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="min-h-screen bg-background">
+        <div className="max-w-[1200px] w-full mx-auto px-6 py-4 space-y-6">
           <Skeleton className="h-10 w-1/2" />
           <Card>
             <CardContent className="p-6 space-y-4">
@@ -494,8 +494,8 @@ export default function ClaimDetailPage({
     <ToastProvider>
       <ToastRegistry />
       <Toaster />
-      <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="min-h-screen bg-background">
+        <div className="max-w-[1200px] w-full mx-auto px-6 py-4 space-y-6">
           {/* Back Link */}
           <Link
             href="/claims"

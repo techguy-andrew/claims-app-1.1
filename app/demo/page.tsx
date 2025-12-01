@@ -344,7 +344,7 @@ export default function DemoPage() {
       <Toaster />
       <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8">
 
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-[1200px] w-full mx-auto space-y-6">
         {/* Header */}
         <PageHeader
           title="ItemCard Demo"

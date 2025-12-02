@@ -22,35 +22,44 @@ A full-stack claims management application for tracking insurance claims, items,
 
 ```
 app/
-├── claims/           # Claims pages
-│   ├── page.tsx
-│   └── [id]/page.tsx
-├── demo/             # Demo page
-├── api/              # API routes
-│   ├── claims/       # Claims CRUD + nested items/attachments
-│   └── download/     # File download endpoint
+├── (app)/                # Authenticated routes (AppLayout wrapper)
+│   ├── layout.tsx        # Uses AppLayout with TopBar + Sidebar
+│   ├── page.tsx          # Home page
+│   ├── claims/
+│   │   ├── page.tsx      # Claims list
+│   │   └── [id]/page.tsx # Claim detail with items
+│   └── demo/             # Demo page
+├── (public)/             # Public routes (minimal layout)
+│   └── share/[token]/    # Public claim view (read-only)
+├── api/
+│   ├── claims/           # Claims CRUD + nested items/attachments
+│   │   └── [id]/
+│   │       ├── share/    # Share link management
+│   │       └── pdf/      # PDF generation
+│   ├── share/[token]/    # Public claim endpoint
+│   └── download/         # File download endpoint
 ├── layout.tsx
-├── page.tsx
 └── globals.css
 
 lib/
-├── prisma.ts         # Prisma client singleton
-├── r2.ts             # Cloudflare R2 client
-├── cloudinary.ts     # Legacy Cloudinary client
-└── hooks/            # React Query hooks
+├── prisma.ts             # Prisma client singleton
+├── r2.ts                 # Cloudflare R2 client (PRIMARY storage)
+├── cloudinary.ts         # Legacy Cloudinary client
+└── hooks/
     ├── useClaims.ts
     ├── useItems.ts
-    └── useAttachments.ts
+    ├── useAttachments.ts
+    └── useShareLinks.ts  # Share link mutations
 
-_barron-agency/       # Reusable component library
-├── components/       # All UI components (30+)
-├── config/           # App configuration
-├── hooks/            # Reusable utility hooks
-├── icons/            # SVG icon components
-├── providers/        # React context providers
-├── styles/           # Theme configurations
-├── types/            # TypeScript type definitions
-└── utils/            # Utility functions
+_barron-agency/           # Reusable component library
+├── components/           # 34 UI components
+├── config/               # App configuration + navigation
+├── hooks/                # Reusable utility hooks
+├── icons/                # 20 SVG icon components
+├── providers/            # React context providers
+├── styles/               # Theme configurations
+├── types/                # TypeScript type definitions
+└── utils/                # Utility functions
 
 prisma/               # Schema and migrations
 ```
@@ -150,3 +159,36 @@ pnpm prisma db push   # Push schema without migration (dev only)
 3. **Flat components**: Enables copy-paste portability between projects
 4. **Optimistic updates**: Professional UX - no loading spinners for mutations
 5. **Prisma over raw SQL**: Type safety, migrations, studio for debugging
+
+## v1.1 Features
+
+### PDF Generation
+- **Components**: `ClaimPDF.tsx`, `DownloadClaimPDF.tsx`
+- **API**: `GET /api/claims/[id]/pdf`
+- **Dependencies**: `@react-pdf/renderer`, `sharp`
+- **Pattern**: Server-side render, images converted to base64 JPEG
+
+### Public Share Links
+- **Component**: `ShareClaimButton.tsx`
+- **Hooks**: `useShareLinks.ts` (useShareLink, useCreateShareLink, useRevokeShareLink)
+- **API**: POST/GET/DELETE `/api/claims/[id]/share`, GET `/api/share/[token]`
+- **Pattern**: Token-based (CUID), revokable, one per claim
+
+### Route Groups
+- `(app)/`: Authenticated routes with `AppLayout` (TopBar + Sidebar)
+- `(public)/`: Public routes with minimal layout (TopBar only)
+- **Benefit**: Layout separation without URL pollution
+
+### Navigation System
+- **AppLayout**: Main wrapper, orchestrates state, responsive
+- **TopBar**: Fixed header with toggle, brand, and action slots
+- **Sidebar**: Collapsible (desktop) / overlay (mobile)
+- **State**: Desktop collapse persisted to localStorage
+
+## Documentation References
+
+- [PDFGeneration.md](../docs/guides/PDFGeneration.md) - PDF generation guide
+- [PublicSharing.md](../docs/guides/PublicSharing.md) - Share link system
+- [RouteGroups.md](../docs/guides/RouteGroups.md) - Route architecture
+- [Navigation.md](../docs/guides/Navigation.md) - Navigation components
+- [FileStorage.md](../docs/guides/FileStorage.md) - R2 storage (primary)

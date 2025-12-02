@@ -2,13 +2,13 @@
 
 **The complete portable UI foundation for rapid Next.js development**
 
-A single folder containing 70+ files that transforms any Next.js project into a fully-capable application with a complete component system, optimistic UI patterns, and professional design system.
+A single folder containing 90+ files that transforms any Next.js project into a fully-capable application with a complete component system, optimistic UI patterns, and professional design system.
 
 ## ✨ What's Included
 
-- **23 UI Components** - From basic (Button, Card) to smart (ItemCard, FileGallery)
-- **12 Icon Components** - Custom SVG icons, no external dependencies
-- **6 Theme Variations** - Default, client-specific, and seasonal themes
+- **34 UI Components** - From basic (Button, Card) to smart (ItemCard, FileGallery, ClaimPDF)
+- **20 Icon Components** - Custom SVG icons, no external dependencies
+- **5 Theme Variations** - Default, client-specific, and seasonal themes
 - **Optimistic UI Patterns** - Every mutation feels instant with automatic rollback
 - **Complete Type System** - Full TypeScript definitions
 - **React Query Integration** - Professional data fetching and state management
@@ -76,8 +76,8 @@ Copy the contents of `styles/themes/default.css` to your `app/globals.css`.
 
 ```
 barron-agency/
-├── components/          # 23 UI components
-├── icons/              # 12 icon components
+├── components/          # 34 UI components
+├── icons/              # 20 icon components
 ├── styles/             # Global styles and themes
 │   └── themes/         # 5 theme variations
 ├── hooks/              # React Query mutations
@@ -98,12 +98,18 @@ Pure UI components that receive all data via props:
 
 ### Layout Components
 Structure and navigation components:
-- Header, Footer, Sidebar, Navigation, PageHeader, PageSection
+- AppLayout (main wrapper with responsive sidebar)
+- TopBar (fixed header with toggle and slots)
+- Sidebar (collapsible navigation)
+- Header, Footer, PageHeader, PageSection
 
 ### Smart Components
 Components with business logic and data handling:
 - ItemCard (with inline editing)
 - FileGallery (with drag-and-drop upload)
+- ClaimPDF, DownloadClaimPDF (PDF generation)
+- ShareClaimButton (public link sharing)
+- ClaimDetailsCard, ClaimListCard, ClaimForm
 - LoginForm, SettingsForm, ItemForm
 
 ### Dialog Components

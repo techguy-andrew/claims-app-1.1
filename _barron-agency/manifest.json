@@ -1,41 +1,53 @@
 {
   "name": "barron-agency",
-  "version": "1.0.0",
-  "description": "Barron Agency Foundation - Complete UI Component System",
+  "version": "1.1.0",
+  "description": "Barron Agency Foundation - Complete UI Component System for Claims App",
   "created": "2024-11-23",
+  "updated": "2025-12-01",
   "author": "Andrew Barron",
   "components": {
-    "total": 23,
+    "total": 34,
     "categories": {
       "presentational": [
         "Badge",
         "Button",
         "Card",
         "Input",
+        "Select",
         "Skeleton",
-        "Toast",
-        "Toaster"
+        "Toast"
       ],
       "layout": [
+        "AppLayout",
         "Footer",
         "Header",
-        "Navigation",
         "PageHeader",
         "PageSection",
-        "Sidebar"
+        "Sidebar",
+        "TopBar"
       ],
       "dialogs": [
-        "Dialog",
         "ConfirmationDialog",
+        "Dialog",
         "DropdownMenu"
       ],
       "smart": [
+        "ClaimDetailsCard",
+        "ClaimForm",
+        "ClaimListCard",
+        "ClaimPDF",
+        "ClaimStatusBadge",
+        "ClaimStatusSelector",
+        "DownloadClaimPDF",
+        "FileGallery",
         "ItemCard",
         "ItemCardSkeleton",
         "ItemForm",
-        "FileGallery",
         "LoginForm",
-        "SettingsForm"
+        "PdfThumbnail",
+        "PdfViewer",
+        "SettingsForm",
+        "ShareClaimButton"
       ],
       "utility": [
         "EmptyState"
@@ -43,18 +55,25 @@
     }
   },
   "icons": {
-    "total": 12,
+    "total": 20,
     "list": [
       "CancelIcon",
+      "CheckIcon",
+      "ChevronLeftIcon",
       "ChevronRightIcon",
       "CloseIcon",
       "DownloadIcon",
       "FileIcon",
+      "FileTextIcon",
       "GripVerticalIcon",
+      "HamburgerIcon",
+      "HomeIcon",
+      "LinkIcon",
       "LoadingIcon",
       "MenuIcon",
       "PlusIcon",
       "SaveIcon",
+      "ShareIcon",
       "SpinnerIcon",
       "UploadIcon"
     ]
@@ -82,7 +101,10 @@
     "inlineEditing": true,
     "theming": true,
     "typescript": true,
-    "responsive": true
+    "responsive": true,
+    "pdfGeneration": true,
+    "publicSharing": true,
+    "routeGroups": true
   },
   "dependencies": {
     "required": [
@@ -92,7 +114,9 @@
     ],
     "optional": [
       "framer-motion",
-      "react-dropzone"
+      "react-dropzone",
+      "@react-pdf/renderer",
+      "sharp"
     ],
     "peer": [
       "react",
@@ -102,12 +126,35 @@
     ]
   },
   "structure": {
-    "components": "app/components/",
-    "icons": "app/icons/",
-    "styles": "app/styles/",
-    "hooks": "lib/hooks/",
-    "utils": "lib/",
+    "components": "components/",
+    "icons": "icons/",
+    "styles": "styles/",
+    "hooks": "hooks/",
+    "utils": "utils/",
     "types": "types/",
-    "config": "config/"
+    "config": "config/",
+    "docs": "docs/"
+  },
+  "v1_1_features": {
+    "pdfGeneration": {
+      "components": ["ClaimPDF", "DownloadClaimPDF"],
+      "api": "/api/claims/[id]/pdf",
+      "docs": "docs/guides/PDFGeneration.md"
+    },
+    "publicSharing": {
+      "components": ["ShareClaimButton"],
+      "hooks": ["useShareLinks"],
+      "api": ["/api/claims/[id]/share", "/api/share/[token]"],
+      "docs": "docs/guides/PublicSharing.md"
+    },
+    "routeGroups": {
+      "authenticated": "(app)/",
+      "public": "(public)/",
+      "docs": "docs/guides/RouteGroups.md"
+    },
+    "navigation": {
+      "components": ["AppLayout", "TopBar", "Sidebar"],
+      "docs": "docs/guides/Navigation.md"
+    }
   }
 }

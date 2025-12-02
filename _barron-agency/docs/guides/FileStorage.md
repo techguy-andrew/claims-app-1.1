@@ -1,6 +1,6 @@
 # R2 File Storage Implementation
 
-> Documentation for the Cloudflare R2 file storage system used in the Claims App.
+> **R2 is the PRIMARY storage system.** Cloudflare R2 handles all new file uploads. Cloudinary support is LEGACY only for existing files that were uploaded before the R2 migration.
 
 ## 1. Architecture Overview
 
@@ -325,3 +325,55 @@ GET    /api/claims/[id]/items/[itemId]/attachments/[id]   # Get one
 DELETE /api/claims/[id]/items/[itemId]/attachments/[id]   # Delete
 GET    /api/download?publicId=...&filename=...            # Download
 ```
+
+---
+
+## 8. Integration with PDF Generation
+
+The PDF generation system (`/api/claims/[id]/pdf`) integrates with R2 storage to embed images in PDFs:
+
+### Image Processing Flow
+
+```
+1. PDF route fetches claim with attachments
+           ↓
+2. For each image attachment:
+   - Fetch from R2 public URL
+   - Convert to JPEG using sharp (handles WebP, HEIC, PNG)
+   - Encode as base64 data URI
+           ↓
+3. Base64 images embedded in PDF via @react-pdf/renderer
+```
+
+### Code Pattern
+
+```typescript
+// From /api/claims/[id]/pdf/route.ts
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(15000) // 15s timeout per image
+    })
+    const buffer = await response.arrayBuffer()
+
+    // Convert to JPEG for PDF compatibility
+    const jpegBuffer = await sharp(Buffer.from(buffer))
+      .jpeg({ quality: 80 })
+      .toBuffer()
+
+    return `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`
+  } catch (error) {
+    console.error('Image fetch failed:', error)
+    return null // Graceful fallback - image skipped in PDF
+  }
+}
+```
+
+### Considerations
+
+- **Timeout**: 15 seconds per image to prevent long PDF generation times
+- **Format**: All images converted to JPEG regardless of original format
+- **Fallback**: Failed images are skipped (placeholder shown in PDF)
+- **Memory**: Large claims with many images may require increased memory limits
+
+See [PDFGeneration.md](./PDFGeneration.md) for complete PDF documentation.

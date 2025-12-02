@@ -50,19 +50,22 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-## Component Library (20 Components)
+## Component Library (34 Components)
 
 ### UI Primitives (7)
 `Badge` `Button` `Card` `Dialog` `DropdownMenu` `Input` `Skeleton`
 
-### Feature Components (6)
-`FileGallery` `ItemCard` `ItemCardSkeleton` `ItemForm` `LoginForm` `SettingsForm`
+### Feature Components (17)
+`ClaimDetailsCard` `ClaimForm` `ClaimListCard` `ClaimPDF` `ClaimStatusBadge` `ClaimStatusSelector` `DownloadClaimPDF` `FileGallery` `ItemCard` `ItemCardSkeleton` `ItemForm` `LoginForm` `PdfThumbnail` `PdfViewer` `SettingsForm` `ShareClaimButton` `Select`
 
-### Layout/Semantic Components (7)
-`EmptyState` `Footer` `Header` `Navigation` `PageHeader` `PageSection` `Sidebar`
+### Layout/Navigation Components (9)
+`AppLayout` `EmptyState` `Footer` `Header` `PageHeader` `PageSection` `Sidebar` `TopBar` `Toast`
 
-### Icons (10)
-`CancelIcon` `CloseIcon` `FileIcon` `GripVerticalIcon` `LoadingIcon` `MenuIcon` `PlusIcon` `SaveIcon` `SpinnerIcon` `UploadIcon`
+### Utility (1)
+`ConfirmationDialog`
+
+### Icons (20)
+`CancelIcon` `CheckIcon` `ChevronLeftIcon` `ChevronRightIcon` `CloseIcon` `DownloadIcon` `FileIcon` `FileTextIcon` `GripVerticalIcon` `HamburgerIcon` `HomeIcon` `LinkIcon` `LoadingIcon` `MenuIcon` `PlusIcon` `SaveIcon` `ShareIcon` `SpinnerIcon` `UploadIcon`
 
 Every component is documented with props interfaces, npm dependencies, and whether it's "smart" (handles logic/data) or "presentational" (just renders). Open `app/components/` to see the complete library.
 
@@ -74,15 +77,18 @@ All components live in `app/components/` with PascalCase naming. No subfolders. 
 
 ```
 app/components/
+  ├── AppLayout.tsx
   ├── Badge.tsx
   ├── Button.tsx
   ├── Card.tsx
+  ├── ClaimPDF.tsx
   ├── Dialog.tsx
   ├── FileGallery.tsx
-  ├── Header.tsx
   ├── ItemCard.tsx
-  ├── ItemForm.tsx
-  └── ... (13 more)
+  ├── ShareClaimButton.tsx
+  ├── Sidebar.tsx
+  ├── TopBar.tsx
+  └── ... (23 more)
 ```
 
 **Why flat?** Because when you start a new client project, you need to see what components exist immediately. Nested folders make you hunt. Flat structures make you productive.
@@ -164,16 +170,23 @@ We build semantic components that encode complete layout solutions rather than g
 ```
 agency-foundation/
 ├── app/
-│   ├── (auth)/              # Authentication routes
-│   ├── (dashboard)/         # Dashboard routes  
+│   ├── (app)/               # Authenticated routes (AppLayout)
+│   │   ├── claims/          # Claims management
+│   │   └── demo/            # Demo page
+│   ├── (public)/            # Public routes (minimal layout)
+│   │   └── share/[token]/   # Public claim sharing
 │   ├── api/                 # API endpoints
-│   ├── components/          # All UI components (flat, 23 files)
-│   ├── icons/               # Icon components (separate from UI)
+│   │   ├── claims/          # Claims CRUD + items, attachments
+│   │   ├── share/           # Public share endpoint
+│   │   └── download/        # File download proxy
+│   ├── components/          # All UI components (flat, 34 files)
+│   ├── icons/               # Icon components (20 files)
 │   └── styles/themes/       # Theme CSS files (5 variations)
 ├── context/                 # Documentation and checkpoints
 │   ├── checkpoints/         # Compliance checkpoints and system
 ├── config/                  # Application configuration
 ├── lib/                     # Utilities, hooks, validation
+│   └── hooks/               # React Query hooks (useClaims, useItems, useShareLinks)
 ├── types/                   # Shared TypeScript types
 ├── prisma/                  # Database schema and migrations
 └── public/                  # Static assets
@@ -277,6 +290,22 @@ Internal use only.
 
 ---
 
+## v1.1 Feature Highlights
+
+### PDF Generation
+Server-side PDF generation for claims using `@react-pdf/renderer`. Components: `ClaimPDF`, `DownloadClaimPDF`. See [PDFGeneration.md](./guides/PDFGeneration.md).
+
+### Public Share Links
+Token-based public access for claims. Components: `ShareClaimButton`. Hooks: `useShareLinks.ts`. See [PublicSharing.md](./guides/PublicSharing.md).
+
+### Route Groups
+Next.js route groups for layout separation: `(app)` for authenticated, `(public)` for shared views. See [RouteGroups.md](./guides/RouteGroups.md).
+
+### Enhanced Navigation
+Three-component navigation system: `AppLayout`, `TopBar`, `Sidebar` with responsive behavior and localStorage persistence. See [Navigation.md](./guides/Navigation.md).
+
+---
+
 **Version:** 1.1.0
-**Last Updated:** November 2025
+**Last Updated:** December 2025
 **Philosophy:** Own your foundation. Build to last.

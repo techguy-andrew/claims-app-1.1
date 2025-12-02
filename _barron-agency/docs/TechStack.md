@@ -38,6 +38,12 @@ We don't use external component libraries (Shadcn, Material-UI, etc.). Instead, 
 - **Next.js API Routes** - Serverless backend with type-safe endpoints
 - **Prisma** - Type-safe ORM for database operations
 - **Neon** - Serverless PostgreSQL database with branching and instant provisioning
+- **Cloudflare R2** - Primary file storage (S3-compatible, edge delivery)
+
+### PDF & Document Generation
+
+- **@react-pdf/renderer** - Server-side PDF generation with React components
+- **sharp** - Image processing and format conversion (WebP/HEIC to JPEG for PDF embedding)
 
 ### State Management
 
@@ -423,37 +429,52 @@ This is the agency advantage. Own it.
 ```
 project-name/
 ├── app/
-│   ├── (auth)/
-│   │   ├── login/
-│   │   │   └── page.tsx
-│   │   ├── signup/
-│   │   │   └── page.tsx
-│   │   └── layout.tsx
-│   ├── (dashboard)/
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   ├── items/
-│   │   │   └── page.tsx
-│   │   ├── properties/
-│   │   │   └── page.tsx
-│   │   └── settings/
-│   │       └── page.tsx
-│   ├── api/
-│   │   ├── items/
-│   │   │   ├── route.ts
+│   ├── (app)/                     # Authenticated routes (AppLayout)
+│   │   ├── layout.tsx             # Uses AppLayout wrapper
+│   │   ├── page.tsx               # Home page
+│   │   ├── claims/
+│   │   │   ├── page.tsx           # Claims list
 │   │   │   └── [id]/
-│   │   │       └── route.ts
-│   │   ├── auth/
-│   │   │   └── route.ts
+│   │   │       └── page.tsx       # Claim detail
+│   │   └── demo/
+│   │       └── page.tsx           # Demo page
+│   ├── (public)/                  # Public routes (minimal layout)
+│   │   ├── layout.tsx             # TopBar only, no sidebar
+│   │   └── share/
+│   │       └── [token]/
+│   │           └── page.tsx       # Public claim view
+│   ├── api/
+│   │   ├── claims/
+│   │   │   ├── route.ts           # GET all, POST new
+│   │   │   └── [id]/
+│   │   │       ├── route.ts       # GET/PATCH/DELETE claim
+│   │   │       ├── items/         # Item CRUD
+│   │   │       ├── share/         # Share link management
+│   │   │       │   └── route.ts   # POST/GET/DELETE share
+│   │   │       └── pdf/
+│   │   │           └── route.ts   # GET PDF generation
+│   │   ├── share/
+│   │   │   └── [token]/
+│   │   │       └── route.ts       # Public claim by token
+│   │   ├── download/
+│   │   │   └── route.ts           # File download proxy
 │   │   └── webhook/
 │   │       └── clerk/
 │   │           └── route.ts
-│   ├── components/
+│   ├── components/                # 34 UI components
+│   │   ├── AppLayout.tsx          # Main layout wrapper
 │   │   ├── Badge.tsx
 │   │   ├── Button.tsx
 │   │   ├── Card.tsx
+│   │   ├── ClaimDetailsCard.tsx
+│   │   ├── ClaimForm.tsx
+│   │   ├── ClaimListCard.tsx
+│   │   ├── ClaimPDF.tsx           # PDF document template
+│   │   ├── ClaimStatusBadge.tsx
+│   │   ├── ClaimStatusSelector.tsx
 │   │   ├── ConfirmationDialog.tsx
 │   │   ├── Dialog.tsx
+│   │   ├── DownloadClaimPDF.tsx   # PDF download button
 │   │   ├── DropdownMenu.tsx
 │   │   ├── EmptyState.tsx
 │   │   ├── FileGallery.tsx
@@ -464,25 +485,35 @@ project-name/
 │   │   ├── ItemCardSkeleton.tsx
 │   │   ├── ItemForm.tsx
 │   │   ├── LoginForm.tsx
-│   │   ├── Navigation.tsx
 │   │   ├── PageHeader.tsx
 │   │   ├── PageSection.tsx
+│   │   ├── PdfThumbnail.tsx
+│   │   ├── PdfViewer.tsx
+│   │   ├── Select.tsx
 │   │   ├── SettingsForm.tsx
+│   │   ├── ShareClaimButton.tsx   # Share link management
 │   │   ├── Sidebar.tsx
 │   │   ├── Skeleton.tsx
 │   │   ├── Toast.tsx
-│   │   └── Toaster.tsx
-│   ├── icons/
+│   │   └── TopBar.tsx             # Fixed header
+│   ├── icons/                     # 20 icon components
 │   │   ├── CancelIcon.tsx
+│   │   ├── CheckIcon.tsx
+│   │   ├── ChevronLeftIcon.tsx
 │   │   ├── ChevronRightIcon.tsx
 │   │   ├── CloseIcon.tsx
 │   │   ├── DownloadIcon.tsx
 │   │   ├── FileIcon.tsx
+│   │   ├── FileTextIcon.tsx
 │   │   ├── GripVerticalIcon.tsx
+│   │   ├── HamburgerIcon.tsx
+│   │   ├── HomeIcon.tsx
+│   │   ├── LinkIcon.tsx
 │   │   ├── LoadingIcon.tsx
 │   │   ├── MenuIcon.tsx
 │   │   ├── PlusIcon.tsx
 │   │   ├── SaveIcon.tsx
+│   │   ├── ShareIcon.tsx
 │   │   ├── SpinnerIcon.tsx
 │   │   └── UploadIcon.tsx
 │   ├── styles/
@@ -506,13 +537,17 @@ project-name/
 │   └── layout-architecture.md
 ├── lib/
 │   ├── prisma.ts
+│   ├── r2.ts                      # Cloudflare R2 client
+│   ├── cloudinary.ts              # Legacy Cloudinary support
 │   ├── auth.ts
 │   ├── utils.ts
 │   ├── constants.ts
 │   ├── validations.ts
 │   └── hooks/
+│       ├── useClaims.ts
 │       ├── useItems.ts
-│       └── useAttachments.ts
+│       ├── useAttachments.ts
+│       └── useShareLinks.ts       # Share link mutations
 ├── types/
 │   ├── index.ts
 │   ├── items.ts
@@ -591,6 +626,59 @@ Before committing any component to `/components`, verify:
 
 ---
 
-**Version:** 5.1  
-**Last Updated:** November 2025  
+---
+
+## PDF Generation Strategy
+
+Server-side PDF generation using `@react-pdf/renderer` for professional claim documents:
+
+### Architecture
+- **ClaimPDF.tsx**: React-PDF document template with styled components
+- **DownloadClaimPDF.tsx**: Client button that triggers download
+- **API Route**: `/api/claims/[id]/pdf` generates and streams PDF
+
+### Image Handling
+Images are converted to base64 JPEG for PDF embedding using `sharp`:
+- Converts WebP, HEIC, PNG to JPEG format
+- 15-second timeout per image with graceful fallback
+- Design tokens converted to hex colors for PDF styling
+
+### Integration
+- PDF auto-creates share link if none exists
+- Share URL embedded in PDF header and footer
+- See [PDFGeneration.md](./guides/PDFGeneration.md) for complete guide
+
+---
+
+## Public Access Pattern
+
+Token-based public sharing for claims without authentication:
+
+### Database Model
+```prisma
+model ShareLink {
+  id        String   @id @default(cuid())
+  token     String   @unique @default(cuid())
+  claimId   String   @unique
+  claim     Claim    @relation(...)
+  createdAt DateTime @default(now())
+}
+```
+
+### Route Groups
+- `(app)/`: Authenticated routes wrapped in AppLayout
+- `(public)/`: Public routes with minimal layout (TopBar only)
+
+### Security
+- CUID tokens (not guessable, not sequential)
+- One link per claim, revokable
+- Cascade delete when claim deleted
+- Read-only public view
+
+See [PublicSharing.md](./guides/PublicSharing.md) and [RouteGroups.md](./guides/RouteGroups.md) for complete guides.
+
+---
+
+**Version:** 5.2
+**Last Updated:** December 2025
 **Philosophy:** Own your foundation. Build to last.

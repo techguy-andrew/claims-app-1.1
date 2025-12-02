@@ -105,16 +105,9 @@ const DialogClose = React.forwardRef<HTMLButtonElement, DialogCloseProps>(
 )
 DialogClose.displayName = "DialogClose"
 
-// Dialog Portal - renders content in a portal
+// Dialog Portal - renders content in a portal (immediate render, SSR-safe)
 function DialogPortal({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = React.useState(false)
-
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) return null
-
+  if (typeof window === 'undefined') return null
   return createPortal(children, document.body)
 }
 
@@ -133,7 +126,7 @@ const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps>(
         exit={{ opacity: 0 }}
         transition={{ duration: 0.1 }}
         className={cn(
-          "fixed inset-0 z-50 bg-foreground/80",
+          "fixed inset-0 z-[100] bg-foreground/80",
           className
         )}
         onClick={() => onOpenChange(false)}
@@ -185,7 +178,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
 
     return (
       <DialogPortal>
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {open && (
             <>
               <DialogOverlay />
@@ -201,7 +194,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.1 }}
                 className={cn(
-                  "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+                  "fixed left-[50%] top-[50%] z-[100] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
                   className
                 )}
                 onClick={(e) => e.stopPropagation()}

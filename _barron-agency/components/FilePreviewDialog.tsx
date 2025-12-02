@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { DownloadIcon } from "../icons/DownloadIcon"
 import { SpinnerIcon } from "../icons/SpinnerIcon"
@@ -33,12 +33,13 @@ interface FilePreviewDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+// File type helpers (defined outside component to avoid recreation)
+const isImage = (type: string) => type.startsWith("image/")
+const isPdf = (type: string) => type === "application/pdf"
+const isVideo = (type: string) => type.startsWith("video/")
+
 export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialogProps) {
   const [isLoading, setIsLoading] = useState(true)
-
-  const isImage = (type: string) => type.startsWith("image/")
-  const isPdf = (type: string) => type === "application/pdf"
-  const isVideo = (type: string) => type.startsWith("video/")
 
   // Reset loading state when file changes
   useEffect(() => {
@@ -49,7 +50,7 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
     }
   }, [file])
 
-  const handleDownload = async (attachment: Attachment) => {
+  const handleDownload = useCallback(async (attachment: Attachment) => {
     try {
       // Build query params with publicId for server-side signed URL generation
       const resourceType = attachment.type.startsWith('image/') ? 'image' : 'raw'
@@ -79,7 +80,7 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
       // Fallback to opening in new tab if download fails
       window.open(attachment.url, '_blank')
     }
-  }
+  }, [])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -256,10 +256,10 @@ const SelectContent = React.forwardRef<HTMLDivElement, SelectContentProps>(
               contentRef.current = node
             }}
             role="listbox"
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.1, ease: "easeOut" }}
             className={cn(
               "z-50 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
               className

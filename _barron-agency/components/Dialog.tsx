@@ -124,7 +124,7 @@ const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps>(
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.1 }}
+        transition={{ duration: 0.1, ease: "easeOut" }}
         className={cn(
           "fixed inset-0 z-[100] bg-foreground/80",
           className
@@ -189,10 +189,10 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
                   else if (ref) ref.current = node
                   contentRef.current = node
                 }}
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.1, ease: "easeOut" }}
                 className={cn(
                   "fixed left-[50%] top-[50%] z-[100] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
                   className

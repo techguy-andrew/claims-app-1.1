@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { MenuIcon } from '../icons/MenuIcon'
 import { LoadingIcon } from '../icons/LoadingIcon'
 import { SaveIcon } from '../icons/SaveIcon'
@@ -465,7 +465,7 @@ export function ItemCard({
           <span className="border border-border rounded-sm px-2 py-0.5 text-sm sm:text-base flex items-center gap-1">
             <ChevronRightIcon
               className={cn(
-                "h-5 w-5 transition-transform duration-200",
+                "h-5 w-5 transition-transform duration-150",
                 isExpanded && itemId ? "rotate-90" : "rotate-0"
               )}
             />
@@ -475,18 +475,30 @@ export function ItemCard({
       </div>
 
       {/* File Gallery (when expanded) or children */}
-      {((itemId && isExpanded) || children) && (
+      <AnimatePresence initial={false}>
+        {itemId && isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 sm:p-6 pt-0 w-full">
+              <FileGallery
+                attachments={attachments}
+                onFilesAdded={onFilesAdded}
+                onFileRemove={onFileRemove}
+                editable={editable && !readOnly}
+                readOnly={readOnly}
+                maxFiles={10}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {children && (
         <div className="p-4 sm:p-6 pt-0 w-full">
-          {itemId && isExpanded && (
-            <FileGallery
-              attachments={attachments}
-              onFilesAdded={onFilesAdded}
-              onFileRemove={onFileRemove}
-              editable={editable && !readOnly}
-              readOnly={readOnly}
-              maxFiles={10}
-            />
-          )}
           {children}
         </div>
       )}

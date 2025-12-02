@@ -172,10 +172,10 @@ export function StatusFilterDropdown({
           {open && (
             <motion.div
               ref={contentRef}
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.1, ease: "easeOut" }}
               className="z-50 min-w-[180px] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
               style={{
                 position: "fixed",

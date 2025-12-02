@@ -62,7 +62,7 @@ export function TopBar({
               <motion.div
                 initial={false}
                 animate={{ rotate: sidebarCollapsed ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
               >
                 <ChevronLeftIcon size={20} />
               </motion.div>

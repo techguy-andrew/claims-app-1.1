@@ -45,7 +45,7 @@ export function Sidebar({
         initial={{ x: '-100%' }}
         animate={{ x: 0 }}
         exit={{ x: '-100%' }}
-        transition={{ duration: 0.2, ease: 'easeInOut' }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
         className={cn(
           'fixed left-0 top-16 bottom-0 w-3/4 z-50 flex flex-col bg-background border-t border-r overflow-hidden',
           className
@@ -98,7 +98,7 @@ export function Sidebar({
     <motion.aside
       initial={false}
       animate={{ width }}
-      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
       className={cn(
         'flex flex-col h-full bg-background border-t border-r overflow-hidden',
         className
@@ -136,7 +136,7 @@ export function Sidebar({
                     <motion.span
                       initial={false}
                       animate={{ opacity: collapsed ? 0 : 1 }}
-                      transition={{ duration: 0.15 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
                       className="truncate"
                     >
                       {item.label}
@@ -158,7 +158,7 @@ export function Sidebar({
           <motion.div
             initial={false}
             animate={{ opacity: collapsed ? 0 : 1 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
             className="text-xs text-muted-foreground"
           >
             Claims App v1.0

@@ -3,7 +3,7 @@
 import React, { useState, useRef, use, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Reorder, useDragControls, AnimatePresence } from 'framer-motion'
+import { Reorder, useDragControls } from 'framer-motion'
 import { toast, Toaster, ToastProvider, ToastRegistry } from '@/_barron-agency/components/Toast'
 import { PlusIcon } from '@/_barron-agency/icons/PlusIcon'
 import { GripVerticalIcon } from '@/_barron-agency/icons/GripVerticalIcon'
@@ -173,17 +173,12 @@ function ReorderableItem({
       dragElastic={0.1}
       dragMomentum={false}
       layout={isDragging ? "position" : undefined}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       transition={{
         layout: {
           type: "spring",
-          stiffness: 300,
-          damping: 35,
-          mass: 0.8,
+          stiffness: 350,
+          damping: 30,
         },
-        opacity: { duration: 0.2 }
       }}
       className="relative"
       onContextMenu={(e) => e.preventDefault()}
@@ -611,42 +606,40 @@ export default function ClaimDetailPage({
               />
             ) : (
               <div ref={constraintsRef}>
-                <AnimatePresence mode="popLayout">
-                    <Reorder.Group
-                      axis="y"
-                      values={displayItems}
-                      onReorder={handleReorder}
-                      className="flex flex-col gap-4 w-full touch-pan-y select-none"
-                    >
-                      {displayItems.map((item) => {
-                        const stableKey = stableKeysRef.current.get(item.id) || item.id
+                <Reorder.Group
+                  axis="y"
+                  values={displayItems}
+                  onReorder={handleReorder}
+                  className="flex flex-col gap-4 w-full touch-pan-y select-none"
+                >
+                  {displayItems.map((item) => {
+                    const stableKey = stableKeysRef.current.get(item.id) || item.id
 
-                        return (
-                          <ReorderableItem
-                            key={stableKey}
-                            item={item}
-                            claimId={claimId}
-                            editingItemId={editingItemId}
-                            onEdit={handleEdit}
-                            onSave={handleSave}
-                            onCancel={handleCancel}
-                            onDelete={handleDelete}
-                            onFilesAdded={handleFilesAdded}
-                            onFileRemove={handleFileRemove}
-                            onDragStart={handleDragStart}
-                            onDragEnd={handleDragEnd}
-                            constraintsRef={constraintsRef}
-                            autoFocus={editingItemId === item.id}
-                            isSaving={savingItemId === item.id}
-                            isResizing={isResizing}
-                            isDragging={isDragging}
-                            isFilesExpanded={expandedItems.has(item.id)}
-                            onToggleFilesExpanded={() => toggleItemExpanded(item.id)}
-                          />
-                        )
-                      })}
-                    </Reorder.Group>
-                </AnimatePresence>
+                    return (
+                      <ReorderableItem
+                        key={stableKey}
+                        item={item}
+                        claimId={claimId}
+                        editingItemId={editingItemId}
+                        onEdit={handleEdit}
+                        onSave={handleSave}
+                        onCancel={handleCancel}
+                        onDelete={handleDelete}
+                        onFilesAdded={handleFilesAdded}
+                        onFileRemove={handleFileRemove}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        constraintsRef={constraintsRef}
+                        autoFocus={editingItemId === item.id}
+                        isSaving={savingItemId === item.id}
+                        isResizing={isResizing}
+                        isDragging={isDragging}
+                        isFilesExpanded={expandedItems.has(item.id)}
+                        onToggleFilesExpanded={() => toggleItemExpanded(item.id)}
+                      />
+                    )
+                  })}
+                </Reorder.Group>
               </div>
             )}
           </div>

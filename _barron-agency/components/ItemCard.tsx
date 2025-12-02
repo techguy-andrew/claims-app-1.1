@@ -81,6 +81,10 @@ export interface ItemCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>
   isSaving?: boolean
   /** Read-only mode - hides all edit/delete functionality */
   readOnly?: boolean
+  /** Controlled state: whether files section is expanded (optional - falls back to internal state) */
+  isFilesExpanded?: boolean
+  /** Controlled state: callback to toggle files expanded (optional - falls back to internal state) */
+  onToggleFilesExpanded?: () => void
 }
 
 export function ItemCard({
@@ -105,6 +109,8 @@ export function ItemCard({
   onFileRemove,
   isSaving = false,
   readOnly = false,
+  isFilesExpanded: controlledExpanded,
+  onToggleFilesExpanded,
   ...props
 }: ItemCardProps) {
   // Handle null/undefined values with proper defaults
@@ -115,7 +121,10 @@ export function ItemCard({
   const [tempDescription, setTempDescription] = React.useState(safeDescription)
   const [originalTitle, setOriginalTitle] = React.useState(safeTitle)
   const [originalDescription, setOriginalDescription] = React.useState(safeDescription)
-  const [isExpanded, setIsExpanded] = React.useState(false)
+  // Controlled/uncontrolled pattern for expanded state
+  const [internalExpanded, setInternalExpanded] = React.useState(false)
+  const isExpanded = controlledExpanded ?? internalExpanded
+  const toggleExpanded = onToggleFilesExpanded ?? (() => setInternalExpanded(prev => !prev))
   const [attachments, setAttachments] = React.useState<Attachment[]>(initialAttachments)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = React.useState(false)
@@ -282,7 +291,7 @@ export function ItemCard({
   return (
     <div
       className={cn(
-        'rounded-lg border bg-card text-card-foreground shadow-sm w-full h-full transition-shadow',
+        'rounded-lg border bg-card text-card-foreground shadow-sm w-full transition-shadow',
         isDragging && 'shadow-lg',
         className
       )}
@@ -308,7 +317,8 @@ export function ItemCard({
           )}
 
           <div className={cn(
-            "flex flex-col gap-2 sm:gap-3 min-w-0 flex-1 select-none cursor-default"
+            "flex flex-col gap-2 sm:gap-3 min-w-0 flex-1 select-none cursor-default",
+            !readOnly && (editable || onEdit || onDelete || onDuplicate) && "pr-12 sm:pr-14"
           )}
             onDoubleClick={() => editable && !isEditing && !readOnly && handleEdit()}
           >
@@ -445,7 +455,7 @@ export function ItemCard({
       {/* File count badge and accordion toggle - always visible for visual consistency */}
       <div className="px-4 sm:px-6 pb-4">
         <button
-          onClick={() => itemId && setIsExpanded(!isExpanded)}
+          onClick={() => itemId && toggleExpanded()}
           className={cn(
             "text-muted-foreground",
             itemId ? "cursor-pointer" : "opacity-50 cursor-not-allowed"

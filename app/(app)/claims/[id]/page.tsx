@@ -3,7 +3,7 @@
 import React, { useState, useRef, use, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Reorder, useDragControls, AnimatePresence, LayoutGroup } from 'framer-motion'
+import { Reorder, useDragControls, AnimatePresence } from 'framer-motion'
 import { toast, Toaster, ToastProvider, ToastRegistry } from '@/_barron-agency/components/Toast'
 import { PlusIcon } from '@/_barron-agency/icons/PlusIcon'
 import { GripVerticalIcon } from '@/_barron-agency/icons/GripVerticalIcon'
@@ -65,6 +65,9 @@ interface ReorderableItemProps {
   constraintsRef?: React.RefObject<HTMLDivElement | null>
   autoFocus?: boolean
   isSaving?: boolean
+  isResizing?: boolean
+  isFilesExpanded?: boolean
+  onToggleFilesExpanded?: () => void
 }
 
 function ReorderableItem({
@@ -82,6 +85,9 @@ function ReorderableItem({
   constraintsRef,
   autoFocus,
   isSaving,
+  isResizing,
+  isFilesExpanded,
+  onToggleFilesExpanded,
 }: ReorderableItemProps) {
   const dragControls = useDragControls()
   const isEditing = editingItemId === item.id
@@ -105,6 +111,57 @@ function ReorderableItem({
     }))
   }, [item, itemIsDraft])
 
+  // Content shared between both render paths
+  const content = (
+    <div className="flex items-start gap-2 w-full">
+      {/* Drag Handle - disabled for draft items and during resize */}
+      <div
+        className={`flex-shrink-0 py-4 px-2 -my-1 touch-none select-none ${itemIsDraft ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}
+        onPointerDown={(e) => {
+          if (!isEditing && !itemIsDraft && !isResizing) {
+            e.stopPropagation()
+            dragControls.start(e)
+          }
+        }}
+      >
+        <GripVerticalIcon className={`h-5 w-5 ${itemIsDraft ? 'text-muted-foreground/30' : 'text-muted-foreground hover:text-foreground'} transition-colors`} />
+      </div>
+
+      {/* Item Card */}
+      <div className="flex-1 min-w-0">
+        <ItemCard
+          itemId={itemIsDraft ? undefined : item.id}
+          title={item.title}
+          description={item.description}
+          editable={true}
+          onEdit={() => onEdit(item.id)}
+          onSave={(data) => onSave(item.id, data)}
+          onCancel={() => onCancel(item.id)}
+          onDelete={itemIsDraft ? undefined : () => onDelete(item.id)}
+          autoFocus={autoFocus}
+          attachments={attachments}
+          onFilesAdded={itemIsDraft ? undefined : (files) => onFilesAdded?.(item.id, files)}
+          onFileRemove={itemIsDraft ? undefined : (attachmentId) => onFileRemove?.(item.id, attachmentId)}
+          isSaving={isSaving}
+          titlePlaceholder="Enter item title..."
+          descriptionPlaceholder="Enter item description..."
+          isFilesExpanded={isFilesExpanded}
+          onToggleFilesExpanded={onToggleFilesExpanded}
+        />
+      </div>
+    </div>
+  )
+
+  // During resize: plain div, let CSS handle reflow naturally
+  if (isResizing) {
+    return (
+      <div className="relative">
+        {content}
+      </div>
+    )
+  }
+
+  // Normal: full Reorder.Item with drag-and-drop and animations
   return (
     <Reorder.Item
       value={item}
@@ -113,7 +170,7 @@ function ReorderableItem({
       dragConstraints={constraintsRef}
       dragElastic={0.1}
       dragMomentum={false}
-      layout
+      layout="position"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -131,41 +188,7 @@ function ReorderableItem({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
-      <div className="flex items-start gap-2 w-full">
-        {/* Drag Handle - disabled for draft items, touch-none enables mobile drag */}
-        <div
-          className={`flex-shrink-0 py-4 px-2 -my-1 touch-none select-none ${itemIsDraft ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}
-          onPointerDown={(e) => {
-            if (!isEditing && !itemIsDraft) {
-              e.stopPropagation()
-              dragControls.start(e)
-            }
-          }}
-        >
-          <GripVerticalIcon className={`h-5 w-5 ${itemIsDraft ? 'text-muted-foreground/30' : 'text-muted-foreground hover:text-foreground'} transition-colors`} />
-        </div>
-
-        {/* Item Card */}
-        <div className="flex-1 min-w-0">
-          <ItemCard
-            itemId={itemIsDraft ? undefined : item.id}
-            title={item.title}
-            description={item.description}
-            editable={true}
-            onEdit={() => onEdit(item.id)}
-            onSave={(data) => onSave(item.id, data)}
-            onCancel={() => onCancel(item.id)}
-            onDelete={itemIsDraft ? undefined : () => onDelete(item.id)}
-            autoFocus={autoFocus}
-            attachments={attachments}
-            onFilesAdded={itemIsDraft ? undefined : (files) => onFilesAdded?.(item.id, files)}
-            onFileRemove={itemIsDraft ? undefined : (attachmentId) => onFileRemove?.(item.id, attachmentId)}
-            isSaving={isSaving}
-            titlePlaceholder="Enter item title..."
-            descriptionPlaceholder="Enter item description..."
-          />
-        </div>
-      </div>
+      {content}
     </Reorder.Item>
   )
 }
@@ -183,6 +206,8 @@ export default function ClaimDetailPage({
   const [savingClaim, setSavingClaim] = useState(false)
   const [draftItem, setDraftItem] = useState<DraftItem | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [isResizing, setIsResizing] = useState(false)
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const stableKeysRef = useRef<Map<string, string>>(new Map())
   const pointerYRef = useRef(0)
   const animationFrameRef = useRef<number | null>(null)
@@ -242,6 +267,23 @@ export default function ClaimDetailPage({
     }
   }, [isDragging])
 
+  // Disable layout animations during window resize to prevent jumbling
+  useEffect(() => {
+    let resizeTimer: NodeJS.Timeout
+
+    const handleResize = () => {
+      setIsResizing(true)
+      clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => setIsResizing(false), 250)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      clearTimeout(resizeTimer)
+    }
+  }, [])
+
   // Drag state handlers
   const handleDragStart = useCallback(() => {
     setIsDragging(true)
@@ -249,6 +291,19 @@ export default function ClaimDetailPage({
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false)
+  }, [])
+
+  // Toggle item expanded state (lifted from ItemCard to survive remounts)
+  const toggleItemExpanded = useCallback((itemId: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev)
+      if (next.has(itemId)) {
+        next.delete(itemId)
+      } else {
+        next.add(itemId)
+      }
+      return next
+    })
   }, [])
 
   // Combine draft item with real items into a single array for unified rendering
@@ -505,7 +560,7 @@ export default function ClaimDetailPage({
               href="/claims"
               className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              ← Back to Claims
+              ← Claims
             </Link>
             <div className="flex items-center gap-2">
               <DownloadClaimPDF claimId={claimId} claimNumber={claim?.claimNumber || ''} />
@@ -553,9 +608,8 @@ export default function ClaimDetailPage({
                 description="Click 'Add Item' to add items to this claim."
               />
             ) : (
-              <LayoutGroup>
-                <div ref={constraintsRef}>
-                  <AnimatePresence mode="popLayout">
+              <div ref={constraintsRef}>
+                <AnimatePresence mode="popLayout">
                     <Reorder.Group
                       axis="y"
                       values={displayItems}
@@ -582,13 +636,15 @@ export default function ClaimDetailPage({
                             constraintsRef={constraintsRef}
                             autoFocus={editingItemId === item.id}
                             isSaving={savingItemId === item.id}
+                            isResizing={isResizing}
+                            isFilesExpanded={expandedItems.has(item.id)}
+                            onToggleFilesExpanded={() => toggleItemExpanded(item.id)}
                           />
                         )
                       })}
                     </Reorder.Group>
-                  </AnimatePresence>
-                </div>
-              </LayoutGroup>
+                </AnimatePresence>
+              </div>
             )}
           </div>
         </div>

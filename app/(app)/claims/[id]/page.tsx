@@ -172,7 +172,7 @@ function ReorderableItem({
       dragConstraints={constraintsRef}
       dragElastic={0.1}
       dragMomentum={false}
-      layout={isDragging ? "position" : false}
+      layout={isDragging ? "position" : undefined}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

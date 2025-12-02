@@ -1,65 +1,109 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
+import { useClaims, ClaimStatus } from '@/lib/hooks/useClaims'
+import { Card } from '@/_barron-agency/components/Card'
+import { Skeleton } from '@/_barron-agency/components/Skeleton'
+import { ClaimStatusBadge } from '@/_barron-agency/components/ClaimStatusBadge'
+
+const STATUS_ORDER: ClaimStatus[] = ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'CLOSED']
+
+// Date/time display component
+function DateTimeDisplay() {
+  const [dateTime, setDateTime] = useState<{ date: string; time: string } | null>(null)
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date()
+      setDateTime({
+        date: now.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }),
+        time: now.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit'
+        })
+      })
+    }
+    update()
+    const interval = setInterval(update, 60000) // Update every minute
+    return () => clearInterval(interval)
+  }, [])
+
+  if (!dateTime) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-5 w-64" />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <main className="flex min-h-screen w-full flex-col items-center justify-between p-8 sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div>
+      <div className="text-4xl font-bold">{dateTime.time}</div>
+      <div className="text-muted-foreground mt-1">{dateTime.date}</div>
     </div>
-  );
+  )
+}
+
+export default function DashboardPage() {
+  const { data: claims, isLoading } = useClaims()
+
+  // Calculate counts per status
+  const statusCounts = useMemo(() => {
+    const counts: Partial<Record<ClaimStatus, number>> = {}
+    claims?.forEach(claim => {
+      counts[claim.status] = (counts[claim.status] || 0) + 1
+    })
+    return counts
+  }, [claims])
+
+  // Get active statuses (count > 0) in order
+  const activeStatuses = useMemo(() => {
+    return STATUS_ORDER.filter(status => (statusCounts[status] || 0) > 0)
+  }, [statusCounts])
+
+  return (
+    <div className="p-8 space-y-8">
+      {/* Date/Time Display */}
+      <DateTimeDisplay />
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {isLoading ? (
+            // Loading skeletons
+            [...Array(3)].map((_, i) => (
+              <Card key={i} className="p-4">
+                <Skeleton className="h-5 w-24 mb-2" />
+                <Skeleton className="h-8 w-12" />
+              </Card>
+            ))
+          ) : activeStatuses.length === 0 ? (
+            <div className="col-span-full text-center text-muted-foreground py-8">
+              No claims yet
+            </div>
+          ) : (
+            activeStatuses.map((status) => {
+              const count = statusCounts[status] || 0
+
+              return (
+                <Link key={status} href={`/claims?status=${status}`}>
+                  <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <ClaimStatusBadge status={status} />
+                      <div className="text-2xl font-bold">{count}</div>
+                    </div>
+                  </Card>
+                </Link>
+              )
+            })
+          )}
+      </div>
+    </div>
+  )
 }

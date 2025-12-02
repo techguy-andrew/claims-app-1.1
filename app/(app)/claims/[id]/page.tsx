@@ -66,6 +66,7 @@ interface ReorderableItemProps {
   autoFocus?: boolean
   isSaving?: boolean
   isResizing?: boolean
+  isDragging?: boolean
   isFilesExpanded?: boolean
   onToggleFilesExpanded?: () => void
 }
@@ -86,6 +87,7 @@ function ReorderableItem({
   autoFocus,
   isSaving,
   isResizing,
+  isDragging,
   isFilesExpanded,
   onToggleFilesExpanded,
 }: ReorderableItemProps) {
@@ -170,7 +172,7 @@ function ReorderableItem({
       dragConstraints={constraintsRef}
       dragElastic={0.1}
       dragMomentum={false}
-      layout="position"
+      layout={isDragging ? "position" : false}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -637,6 +639,7 @@ export default function ClaimDetailPage({
                             autoFocus={editingItemId === item.id}
                             isSaving={savingItemId === item.id}
                             isResizing={isResizing}
+                            isDragging={isDragging}
                             isFilesExpanded={expandedItems.has(item.id)}
                             onToggleFilesExpanded={() => toggleItemExpanded(item.id)}
                           />

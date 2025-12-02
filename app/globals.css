@@ -100,4 +100,8 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   /* Prevent pull-to-refresh and overscroll effects */
   overscroll-behavior: none;
+  /* Disable horizontal scrolling */
+  overflow-x: hidden;
+  /* Only show vertical scrollbar when content overflows */
+  overflow-y: auto;
 }

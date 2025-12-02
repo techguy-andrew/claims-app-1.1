@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/_barron-agency/components/PageHeader'
 import { EmptyState } from '@/_barron-agency/components/EmptyState'
 import { Button } from '@/_barron-agency/components/Button'
@@ -15,13 +16,20 @@ import { useDebounce } from '@/lib/hooks/useDebounce'
 import { useClaimsFilter } from '@/lib/hooks/useClaimsFilter'
 
 export default function ClaimsPage() {
+  const searchParams = useSearchParams()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [isFormDirty, setIsFormDirty] = useState(false)
 
-  // Filter state
+  // Filter state - initialize from URL params
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedStatuses, setSelectedStatuses] = useState<ClaimStatus[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<ClaimStatus[]>(() => {
+    const statusParam = searchParams.get('status')
+    if (statusParam && Object.values(ClaimStatus).includes(statusParam as ClaimStatus)) {
+      return [statusParam as ClaimStatus]
+    }
+    return []
+  })
 
   // Debounced search for performance
   const debouncedSearch = useDebounce(searchQuery, 300)

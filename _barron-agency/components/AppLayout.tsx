@@ -109,7 +109,7 @@ export function AppLayout({
   const isCollapsedOrHidden = isMobile ? mobileHidden : desktopCollapsed
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden">
+    <div className="flex flex-col min-h-screen w-full">
       {/* TopBar - always visible */}
       <TopBar
         onSidebarToggle={handleSidebarToggle}
@@ -157,7 +157,7 @@ export function AppLayout({
         )}
 
         {/* Main Content */}
-        <main className="flex-1 w-full overflow-y-auto">
+        <main className="flex-1 w-full">
           {children}
         </main>
       </div>

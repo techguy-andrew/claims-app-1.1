@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/_barron-agency/components/PageHeader'
 import { EmptyState } from '@/_barron-agency/components/EmptyState'
@@ -15,7 +15,7 @@ import { useClaims, useCreateClaim, ClaimStatus } from '@/lib/hooks/useClaims'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { useClaimsFilter } from '@/lib/hooks/useClaimsFilter'
 
-export default function ClaimsPage() {
+function ClaimsPageContent() {
   const searchParams = useSearchParams()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
@@ -180,6 +180,31 @@ export default function ClaimsPage() {
           cancelLabel="Keep Editing"
           isDestructive
         />
+    </div>
+  )
+}
+
+export default function ClaimsPage() {
+  return (
+    <Suspense fallback={<ClaimsPageSkeleton />}>
+      <ClaimsPageContent />
+    </Suspense>
+  )
+}
+
+function ClaimsPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="sticky top-16 z-40 bg-background border-b px-8 py-6">
+        <div className="h-8 w-32 bg-muted animate-pulse rounded" />
+      </div>
+      <div className="p-8">
+        <div className="flex flex-col gap-4">
+          {[...Array(3)].map((_, i) => (
+            <ClaimListCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

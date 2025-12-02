@@ -47,6 +47,8 @@ export interface ClaimDetailsCardProps extends React.HTMLAttributes<HTMLDivEleme
   isSaving?: boolean
   /** Read-only mode - hides all edit/delete functionality */
   readOnly?: boolean
+  /** Hide the status selector (for public/external views) */
+  hideStatus?: boolean
 }
 
 export function ClaimDetailsCard({
@@ -56,6 +58,7 @@ export function ClaimDetailsCard({
   onDelete,
   isSaving = false,
   readOnly = false,
+  hideStatus = false,
   ...props
 }: ClaimDetailsCardProps) {
   const [isEditing, setIsEditing] = React.useState(false)
@@ -307,13 +310,15 @@ export function ClaimDetailsCard({
         {/* Content */}
         <div className="space-y-4 pr-16">
           {/* Status Row */}
-          <div className="flex flex-wrap items-center gap-4">
-            <ClaimStatusSelector
-              status={claim.status}
-              onStatusChange={(status) => onSave?.({ status })}
-              disabled={isSaving || readOnly}
-            />
-          </div>
+          {!hideStatus && (
+            <div className="flex flex-wrap items-center gap-4">
+              <ClaimStatusSelector
+                status={claim.status}
+                onStatusChange={(status) => onSave?.({ status })}
+                disabled={isSaving || readOnly}
+              />
+            </div>
+          )}
 
           {/* Claim Number */}
           <div className="text-sm">

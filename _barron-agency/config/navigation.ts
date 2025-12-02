@@ -27,7 +27,7 @@ export const NAVIGATION: NavItem[] = [
 ] as const
 
 export const BRAND = {
-  name: 'Claims App',
+  name: 'Seamless Restoration',
   href: '/',
   description: 'Streamlined claims management',
 } as const

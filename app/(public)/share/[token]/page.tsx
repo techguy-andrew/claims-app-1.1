@@ -9,6 +9,7 @@ import { ClaimDetailsCard, type ClaimDetailsData } from '@/_barron-agency/compon
 import { EmptyState } from '@/_barron-agency/components/EmptyState'
 import { Card, CardContent } from '@/_barron-agency/components/Card'
 import { Skeleton } from '@/_barron-agency/components/Skeleton'
+import { TopBar } from '@/_barron-agency/components/TopBar'
 import type { Claim, Item, Attachment } from '@prisma/client'
 
 // Types for shared claim data
@@ -92,12 +93,8 @@ export default function SharedClaimPage({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-[1200px] w-full mx-auto px-6 py-4 space-y-6">
-        {/* Shared Claim Banner */}
-        <div className="bg-muted/50 border border-border rounded-lg px-4 py-3 text-sm text-muted-foreground">
-          You&apos;re viewing a shared claim. This is a read-only view.
-        </div>
-
+      <TopBar />
+      <div className="max-w-[1200px] w-full mx-auto px-6 pt-20 pb-4 space-y-6">
         {/* Claim Info Card */}
         {claim && (
           <ClaimDetailsCard
@@ -114,6 +111,7 @@ export default function SharedClaimPage({
               claimantAddress: claim.claimantAddress,
             }}
             readOnly={true}
+            hideStatus={true}
           />
         )}
 

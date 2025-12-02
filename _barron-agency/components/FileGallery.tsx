@@ -368,6 +368,7 @@ export function FileGallery({
         confirmLabel="Delete"
         cancelLabel="Cancel"
         isDestructive={true}
+        confirmationText="delete this file"
       />
     </div>
   )

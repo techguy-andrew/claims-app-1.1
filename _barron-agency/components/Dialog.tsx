@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { createPortal } from "react-dom"
+import { motion, AnimatePresence } from "framer-motion"
 import { CancelIcon } from "../icons/CancelIcon"
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
@@ -121,18 +122,21 @@ function DialogPortal({ children }: { children: React.ReactNode }) {
 export interface DialogOverlayProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps>(
-  ({ className, ...props }, ref) => {
+  ({ className }, ref) => {
     const { onOpenChange } = useDialogContext()
 
     return (
-      <div
+      <motion.div
         ref={ref}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.1 }}
         className={cn(
-          "fixed inset-0 z-50 bg-foreground/80 animate-in fade-in-0",
+          "fixed inset-0 z-50 bg-foreground/80",
           className
         )}
         onClick={() => onOpenChange(false)}
-        {...props}
       />
     )
   }
@@ -143,7 +147,7 @@ DialogOverlay.displayName = "DialogOverlay"
 export interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
-  ({ className, children, ...props }, ref) => {
+  ({ className, children }, ref) => {
     const { open, onOpenChange } = useDialogContext()
     const contentRef = React.useRef<HTMLDivElement>(null)
 
@@ -179,31 +183,38 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
       }
     }, [open])
 
-    if (!open) return null
-
     return (
       <DialogPortal>
-        <DialogOverlay />
-        <div
-          ref={(node) => {
-            // Merge refs
-            if (typeof ref === "function") ref(node)
-            else if (ref) ref.current = node
-            contentRef.current = node
-          }}
-          className={cn(
-            "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg animate-in fade-in-0 zoom-in-95 sm:rounded-lg",
-            className
+        <AnimatePresence>
+          {open && (
+            <>
+              <DialogOverlay />
+              <motion.div
+                ref={(node) => {
+                  // Merge refs
+                  if (typeof ref === "function") ref(node)
+                  else if (ref) ref.current = node
+                  contentRef.current = node
+                }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.1 }}
+                className={cn(
+                  "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+                  className
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {children}
+                <DialogClose className="absolute right-4 top-4 p-0 m-0 border-0 bg-transparent cursor-pointer outline-none focus:outline-none hover:opacity-80 transition-opacity">
+                  <CancelIcon className="h-8 w-8" />
+                  <span className="sr-only">Close</span>
+                </DialogClose>
+              </motion.div>
+            </>
           )}
-          onClick={(e) => e.stopPropagation()}
-          {...props}
-        >
-          {children}
-          <DialogClose className="absolute right-4 top-4 p-0 m-0 border-0 bg-transparent cursor-pointer outline-none focus:outline-none hover:opacity-80 transition-opacity">
-            <CancelIcon className="h-8 w-8" />
-            <span className="sr-only">Close</span>
-          </DialogClose>
-        </div>
+        </AnimatePresence>
       </DialogPortal>
     )
   }

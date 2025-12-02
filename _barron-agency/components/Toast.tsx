@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { createPortal } from "react-dom"
+import { motion, AnimatePresence } from "framer-motion"
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -59,13 +60,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 // Individual toast component
-function ToastItem({ toast, onRemove }: { toast: ToastItem; onRemove: () => void }) {
-  const [isExiting, setIsExiting] = React.useState(false)
-
+function ToastItemComponent({ toast, onRemove }: { toast: ToastItem; onRemove: () => void }) {
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      setIsExiting(true)
-      setTimeout(onRemove, 200) // Wait for exit animation
+      onRemove()
     }, toast.duration || 3000)
 
     return () => clearTimeout(timer)
@@ -78,17 +76,20 @@ function ToastItem({ toast, onRemove }: { toast: ToastItem; onRemove: () => void
   }
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.1 }}
       className={cn(
-        "rounded-full px-4 py-2 text-sm shadow-lg transition-all duration-200",
+        "rounded-full px-4 py-2 text-sm shadow-lg",
         "min-w-0 max-w-[400px]",
-        typeStyles[toast.type],
-        isExiting ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
+        typeStyles[toast.type]
       )}
       role="alert"
     >
       {toast.message}
-    </div>
+    </motion.div>
   )
 }
 
@@ -105,13 +106,15 @@ export function Toaster() {
 
   return createPortal(
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
-      {toasts.map((toast) => (
-        <ToastItem
-          key={toast.id}
-          toast={toast}
-          onRemove={() => removeToast(toast.id)}
-        />
-      ))}
+      <AnimatePresence>
+        {toasts.map((toast) => (
+          <ToastItemComponent
+            key={toast.id}
+            toast={toast}
+            onRemove={() => removeToast(toast.id)}
+          />
+        ))}
+      </AnimatePresence>
     </div>,
     document.body
   )

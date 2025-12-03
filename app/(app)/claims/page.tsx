@@ -2,24 +2,19 @@
 
 import { useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { PageHeader } from '@/_barron-agency/components/PageHeader'
 import { EmptyState } from '@/_barron-agency/components/EmptyState'
 import { Button } from '@/_barron-agency/components/Button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/_barron-agency/components/Dialog'
-import { ConfirmationDialog } from '@/_barron-agency/components/ConfirmationDialog'
-import { ClaimForm, type ClaimFormData } from '@/_barron-agency/components/ClaimForm'
 import { ClaimListCard, ClaimListCardSkeleton } from '@/_barron-agency/components/ClaimListCard'
 import { ClaimsToolbar } from '@/_barron-agency/components/ClaimsToolbar'
 import { PlusIcon } from '@/_barron-agency/icons/PlusIcon'
-import { useClaims, useCreateClaim, ClaimStatus } from '@/lib/hooks/useClaims'
+import { useClaims, ClaimStatus } from '@/lib/hooks/useClaims'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { useClaimsFilter } from '@/lib/hooks/useClaimsFilter'
 
 function ClaimsPageContent() {
   const searchParams = useSearchParams()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
-  const [isFormDirty, setIsFormDirty] = useState(false)
 
   // Filter state - initialize from URL params
   const [searchQuery, setSearchQuery] = useState('')
@@ -35,7 +30,6 @@ function ClaimsPageContent() {
   const debouncedSearch = useDebounce(searchQuery, 300)
 
   const { data: claims, isLoading, error } = useClaims()
-  const createClaim = useCreateClaim()
 
   // Filtered results
   const { filteredClaims, isEmpty, isFiltered, activeFilterCount } = useClaimsFilter({
@@ -48,41 +42,6 @@ function ClaimsPageContent() {
     setSearchQuery('')
     setSelectedStatuses([])
   }, [])
-
-  const handleCreateClaim = (data: ClaimFormData) => {
-    createClaim.mutate(data, {
-      onSuccess: () => {
-        setIsFormDirty(false)
-        setDialogOpen(false)
-      },
-    })
-  }
-
-  const handleDialogClose = useCallback((open: boolean) => {
-    if (!open && isFormDirty) {
-      // User is trying to close with unsaved changes
-      setConfirmDialogOpen(true)
-    } else {
-      setDialogOpen(open)
-      if (!open) {
-        setIsFormDirty(false)
-      }
-    }
-  }, [isFormDirty])
-
-  const handleConfirmDiscard = useCallback(() => {
-    setIsFormDirty(false)
-    setDialogOpen(false)
-    setConfirmDialogOpen(false)
-  }, [])
-
-  const handleCancelForm = useCallback(() => {
-    if (isFormDirty) {
-      setConfirmDialogOpen(true)
-    } else {
-      setDialogOpen(false)
-    }
-  }, [isFormDirty])
 
   if (error) {
     return (
@@ -106,10 +65,12 @@ function ClaimsPageContent() {
           title="Claims"
           description="View and manage all insurance claims"
           action={
-            <Button onClick={() => setDialogOpen(true)}>
-              <PlusIcon />
-              New Claim
-            </Button>
+            <Link href="/claims/new">
+              <Button>
+                <PlusIcon />
+                New Claim
+              </Button>
+            </Link>
           }
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -152,34 +113,6 @@ function ClaimsPageContent() {
             </div>
           )}
         </div>
-
-        <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>New Claim</DialogTitle>
-              <DialogDescription>
-                Create a new insurance claim
-              </DialogDescription>
-            </DialogHeader>
-            <ClaimForm
-              onFormSubmit={handleCreateClaim}
-              onCancel={handleCancelForm}
-              isSubmitting={createClaim.isPending}
-              onDirtyChange={setIsFormDirty}
-            />
-          </DialogContent>
-        </Dialog>
-
-        <ConfirmationDialog
-          open={confirmDialogOpen}
-          onOpenChange={setConfirmDialogOpen}
-          title="Discard changes?"
-          description="You have unsaved changes. Are you sure you want to close without saving?"
-          onConfirm={handleConfirmDiscard}
-          confirmLabel="Discard"
-          cancelLabel="Keep Editing"
-          isDestructive
-        />
     </div>
   )
 }

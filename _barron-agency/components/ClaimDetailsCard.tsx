@@ -49,6 +49,10 @@ export interface ClaimDetailsCardProps extends React.HTMLAttributes<HTMLDivEleme
   readOnly?: boolean
   /** Hide the status selector (for public/external views) */
   hideStatus?: boolean
+  /** Create mode - starts in edit mode with empty fields */
+  isCreateMode?: boolean
+  /** Callback for create mode save (returns promise that resolves when complete) */
+  onCreate?: (data: ClaimDetailsData) => Promise<void>
 }
 
 export function ClaimDetailsCard({
@@ -59,9 +63,11 @@ export function ClaimDetailsCard({
   isSaving = false,
   readOnly = false,
   hideStatus = false,
+  isCreateMode = false,
+  onCreate,
   ...props
 }: ClaimDetailsCardProps) {
-  const [isEditing, setIsEditing] = React.useState(false)
+  const [isEditing, setIsEditing] = React.useState(isCreateMode)
   const [showCancelConfirm, setShowCancelConfirm] = React.useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
 
@@ -103,6 +109,16 @@ export function ClaimDetailsCard({
       claimantAddress: claim.claimantAddress || '',
     })
   }, [claim])
+
+  // Auto-focus claim number field when in create mode
+  React.useEffect(() => {
+    if (isCreateMode && claimNumberRef.current) {
+      // Use setTimeout to ensure the element is fully rendered and contentEditable
+      setTimeout(() => {
+        claimNumberRef.current?.focus()
+      }, 0)
+    }
+  }, [isCreateMode])
 
   const handleEdit = () => {
     setIsEditing(true)
@@ -146,10 +162,17 @@ export function ClaimDetailsCard({
     )
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const current = getCurrentValues()
-    onSave?.({
+
+    // Validate claim number is required
+    if (!current.claimNumber.trim()) {
+      return
+    }
+
+    const data: ClaimDetailsData = {
       claimNumber: current.claimNumber || '',
+      status: claim.status,
       customer: current.customer || null,
       adjustorName: current.adjustorName || null,
       adjustorPhone: current.adjustorPhone || null,
@@ -158,8 +181,15 @@ export function ClaimDetailsCard({
       claimantPhone: current.claimantPhone || null,
       claimantEmail: current.claimantEmail || null,
       claimantAddress: current.claimantAddress || null,
-    })
-    setIsEditing(false)
+    }
+
+    if (isCreateMode && onCreate) {
+      await onCreate(data)
+      // Don't setIsEditing(false) - the page will navigate away
+    } else {
+      onSave?.(data)
+      setIsEditing(false)
+    }
   }
 
   const handleCancel = () => {
@@ -278,7 +308,7 @@ export function ClaimDetailsCard({
               >
                 <LoadingIcon className="h-8 w-8" />
               </motion.div>
-            ) : (
+            ) : !isCreateMode ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -302,7 +332,7 @@ export function ClaimDetailsCard({
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-            )
+            ) : null
           )}
         </div>
         )}
@@ -315,7 +345,7 @@ export function ClaimDetailsCard({
               <ClaimStatusSelector
                 status={claim.status}
                 onStatusChange={(status) => onSave?.({ status })}
-                disabled={isSaving || readOnly}
+                disabled={isSaving || readOnly || isCreateMode}
               />
             </div>
           )}

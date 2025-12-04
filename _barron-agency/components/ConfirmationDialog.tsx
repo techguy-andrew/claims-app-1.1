@@ -88,7 +88,7 @@ export function ConfirmationDialog({
     onOpenChange(false)
   }
 
-  const isConfirmEnabled = step === 1 || inputValue === confirmationText
+  const isConfirmEnabled = step === 1 || inputValue.toLowerCase() === confirmationText?.toLowerCase()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

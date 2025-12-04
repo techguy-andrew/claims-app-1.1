@@ -78,6 +78,11 @@ export default function NewClaimPage() {
     router.push('/claims')
   }
 
+  // Handle cancel from ClaimDetailsCard in create mode
+  const handleCancelCreate = () => {
+    router.push('/claims')
+  }
+
   // Empty claim data for create mode
   const emptyClaim: ClaimDetailsData = {
     claimNumber: '',
@@ -115,6 +120,7 @@ export default function NewClaimPage() {
               claim={emptyClaim}
               isCreateMode={true}
               onCreate={handleCreate}
+              onCancelCreate={handleCancelCreate}
               isSaving={isCreating}
             />
           </div>

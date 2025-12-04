@@ -53,6 +53,8 @@ export interface ClaimDetailsCardProps extends React.HTMLAttributes<HTMLDivEleme
   isCreateMode?: boolean
   /** Callback for create mode save (returns promise that resolves when complete) */
   onCreate?: (data: ClaimDetailsData) => Promise<void>
+  /** Callback when user cancels in create mode (for navigation) */
+  onCancelCreate?: () => void
 }
 
 export function ClaimDetailsCard({
@@ -65,6 +67,7 @@ export function ClaimDetailsCard({
   hideStatus = false,
   isCreateMode = false,
   onCreate,
+  onCancelCreate,
   ...props
 }: ClaimDetailsCardProps) {
   const [isEditing, setIsEditing] = React.useState(isCreateMode)
@@ -197,6 +200,11 @@ export function ClaimDetailsCard({
       setShowCancelConfirm(true)
       return
     }
+    // No changes - cancel immediately
+    if (isCreateMode && onCancelCreate) {
+      onCancelCreate()
+      return
+    }
     performCancel()
   }
 
@@ -216,6 +224,11 @@ export function ClaimDetailsCard({
 
   const handleConfirmCancel = () => {
     setShowCancelConfirm(false)
+    // In create mode, navigate away instead of just restoring values
+    if (isCreateMode && onCancelCreate) {
+      onCancelCreate()
+      return
+    }
     performCancel()
   }
 
@@ -428,12 +441,16 @@ export function ClaimDetailsCard({
       <ConfirmationDialog
         open={showCancelConfirm}
         onOpenChange={setShowCancelConfirm}
-        title="Discard Changes?"
-        description="You have unsaved changes that will be lost. Are you sure you want to discard them?"
+        title={isCreateMode ? "Discard New Claim?" : "Discard Changes?"}
+        description={isCreateMode
+          ? "You have unsaved changes. Are you sure you want to discard this claim?"
+          : "You have unsaved changes that will be lost. Are you sure you want to discard them?"
+        }
         onConfirm={handleConfirmCancel}
         confirmLabel="Discard"
         cancelLabel="Keep Editing"
         isDestructive={true}
+        confirmationText={isCreateMode ? "confirm" : undefined}
       />
 
       {/* Delete Confirmation Dialog */}

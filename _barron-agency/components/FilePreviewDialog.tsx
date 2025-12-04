@@ -84,10 +84,15 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="pr-24 sm:pr-28">
+          <DialogTitle className="truncate" title={file?.name}>
+            {file?.name}
+          </DialogTitle>
+        </DialogHeader>
         {/* Download button - positioned next to close button */}
         <button
-          className="absolute right-14 top-4 p-0 m-0 border-0 bg-transparent cursor-pointer outline-none focus:outline-none hover:opacity-80 transition-opacity"
+          className="absolute right-12 sm:right-14 top-4 p-0 m-0 border-0 bg-transparent cursor-pointer outline-none focus:outline-none hover:opacity-80 transition-opacity"
           onClick={() => {
             if (file) {
               handleDownload(file)
@@ -95,12 +100,9 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
           }}
           aria-label="Download file"
         >
-          <DownloadIcon className="h-8 w-8" />
+          <DownloadIcon className="h-6 w-6 sm:h-8 sm:w-8" />
         </button>
-        <DialogHeader>
-          <DialogTitle>{file?.name}</DialogTitle>
-        </DialogHeader>
-        <div className="mt-4 relative">
+        <div className="mt-4 relative flex-1 min-h-0 overflow-auto">
           {/* Loading Spinner Overlay */}
           {isLoading && (file && (isImage(file.type) || isVideo(file.type))) && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
@@ -112,18 +114,18 @@ export function FilePreviewDialog({ file, open, onOpenChange }: FilePreviewDialo
             <img
               src={file.url}
               alt={file.name}
-              className="w-full h-auto max-h-[70vh] object-contain"
+              className="w-full h-auto max-h-[calc(90vh-120px)] object-contain mx-auto"
               onLoad={() => setIsLoading(false)}
             />
           ) : file && isPdf(file.type) ? (
-            <div className="max-h-[70vh] overflow-auto">
-              <PdfViewer url={file.url} maxWidth={700} />
+            <div className="w-full max-h-[calc(90vh-120px)] overflow-auto flex justify-center">
+              <PdfViewer url={file.url} className="w-full" />
             </div>
           ) : file && isVideo(file.type) ? (
             <video
               controls
               autoPlay
-              className="w-full max-h-[70vh] rounded-lg"
+              className="w-full max-h-[calc(90vh-120px)] rounded-lg mx-auto"
               src={file.url}
               onLoadedData={() => setIsLoading(false)}
             >

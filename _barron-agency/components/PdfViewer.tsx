@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -17,13 +17,33 @@ interface PdfViewerProps {
 export function PdfViewer({
   url,
   className = "",
-  maxWidth = 600,
+  maxWidth,
 }: PdfViewerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Measure container width for responsive sizing
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width || 0;
+      setContainerWidth(width);
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Calculate page width - use container width, capped by maxWidth if provided
+  const pageWidth = maxWidth
+    ? Math.min(containerWidth, maxWidth)
+    : containerWidth;
 
   // Reset page loading when changing pages
   useEffect(() => {
@@ -58,9 +78,9 @@ export function PdfViewer({
   }
 
   return (
-    <div className={`flex flex-col items-center ${className}`}>
+    <div ref={containerRef} className={`flex flex-col items-center w-full ${className}`}>
       {/* PDF Document */}
-      <div className="relative border border-gray-200 rounded-lg overflow-hidden bg-gray-100">
+      <div className="relative border border-gray-200 rounded-lg overflow-hidden bg-gray-100 w-full max-w-fit mx-auto">
         {/* Loading overlay */}
         {(isLoading || pageLoading) && !error && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100/90 backdrop-blur-sm transition-opacity duration-300">
@@ -115,7 +135,7 @@ export function PdfViewer({
         >
           <Page
             pageNumber={pageNumber}
-            width={maxWidth}
+            width={pageWidth || undefined}
             renderTextLayer={true}
             renderAnnotationLayer={true}
             onRenderSuccess={onPageRenderSuccess}

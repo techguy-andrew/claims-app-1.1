@@ -48,6 +48,73 @@ interface RemoveAttachmentData {
 }
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const UPLOAD_TIMEOUT = 60000; // 60 seconds
+const MAX_RETRIES = 3;
+
+// Upload a single file with timeout and retry logic
+async function uploadFileWithRetry(
+  url: string,
+  formData: FormData,
+  fileName: string
+): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        body: formData,
+        signal: AbortSignal.timeout(UPLOAD_TIMEOUT),
+      });
+
+      // Don't retry client errors (4xx) - only server errors (5xx)
+      if (response.ok || (response.status >= 400 && response.status < 500)) {
+        return response;
+      }
+
+      // Server error - will retry
+      lastError = new Error(`Server error (${response.status})`);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === "TimeoutError" || error.name === "AbortError") {
+          lastError = new Error(`Upload timed out for ${fileName}`);
+        } else if (error.message.includes("Failed to fetch")) {
+          lastError = new Error(`Network error - check your connection`);
+        } else {
+          lastError = error;
+        }
+      }
+    }
+
+    // Wait before retry (exponential backoff: 1s, 2s, 4s)
+    if (attempt < MAX_RETRIES) {
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+    }
+  }
+
+  throw lastError || new Error(`Failed to upload ${fileName} after ${MAX_RETRIES} attempts`);
+}
+
+// Get user-friendly error message from response
+function getUploadErrorMessage(status: number, serverError?: string): string {
+  if (serverError) return serverError;
+  switch (status) {
+    case 400:
+      return "Invalid file format";
+    case 413:
+      return "File too large (max 100MB)";
+    case 408:
+      return "Upload timed out - please try again";
+    case 429:
+      return "Too many uploads - please wait a moment";
+    case 500:
+    case 502:
+    case 503:
+      return "Server error - please try again";
+    default:
+      return `Upload failed (error ${status})`;
+  }
+}
 
 // Add Attachments Mutation with Server-Side Upload to R2
 export function useAddAttachments() {
@@ -69,17 +136,12 @@ export function useAddAttachments() {
         const formData = new FormData();
         formData.append("file", file);
 
-        const response = await fetch(
-          `/api/claims/${data.claimId}/items/${data.itemId}/attachments`,
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
+        const url = `/api/claims/${data.claimId}/items/${data.itemId}/attachments`;
+        const response = await uploadFileWithRetry(url, formData, file.name);
 
         if (!response.ok) {
           const error = await response.json().catch(() => ({}));
-          throw new Error(error.error || `Failed to upload ${file.name}`);
+          throw new Error(getUploadErrorMessage(response.status, error.error));
         }
 
         const newAttachment: PrismaAttachment = await response.json();

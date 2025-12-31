@@ -105,3 +105,12 @@ body {
   /* Only show vertical scrollbar when content overflows */
   overflow-y: auto;
 }
+
+/* Prevent iOS auto-zoom on input focus (requires 16px+ font size) */
+@media screen and (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

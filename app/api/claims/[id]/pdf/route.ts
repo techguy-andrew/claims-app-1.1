@@ -5,43 +5,57 @@ import { ClaimPDF } from '@/_barron-agency/components/ClaimPDF'
 import React from 'react'
 import sharp from 'sharp'
 
+// Allow longer execution time for PDF generation with many images
+export const maxDuration = 60
+
 // Helper to fetch image and convert to JPEG base64 data URI
 // Uses sharp to convert any image format (WebP, HEIC, PNG, etc.) to JPEG
 // because @react-pdf/renderer only supports JPEG and PNG
-async function fetchImageAsBase64(url: string): Promise<string | null> {
+async function fetchImageAsBase64(url: string, filename: string): Promise<string | null> {
+  const startTime = Date.now()
+
   try {
+    console.log(`[PDF] Fetching image: ${filename} from ${url.substring(0, 80)}...`)
+
     const response = await fetch(url, {
-      signal: AbortSignal.timeout(15000), // 15 second timeout
+      signal: AbortSignal.timeout(30000), // 30 second timeout (increased from 15s)
     })
 
     if (!response.ok) {
-      console.warn('Failed to fetch image, status:', response.status, url)
+      console.error(`[PDF] Image fetch failed: ${response.status} ${response.statusText} - ${filename}`)
       return null
     }
 
     const buffer = await response.arrayBuffer()
 
     if (buffer.byteLength === 0) {
-      console.warn('Empty image data for:', url)
+      console.error(`[PDF] Empty image buffer: ${filename}`)
       return null
     }
 
-    // Use sharp to convert any image format to JPEG
+    // Use sharp to convert and resize image for PDF embedding
     try {
       const jpegBuffer = await sharp(Buffer.from(buffer))
         .rotate() // Auto-rotate based on EXIF orientation metadata
-        .jpeg({ quality: 80 })
+        .resize(800, 800, { fit: 'inside', withoutEnlargement: true }) // Limit size for PDF
+        .jpeg({ quality: 75 })
         .toBuffer()
 
-      const base64 = jpegBuffer.toString('base64')
-      console.log('Image converted to JPEG:', { url: url.substring(0, 60), originalSize: buffer.byteLength, jpegSize: jpegBuffer.length })
-      return `data:image/jpeg;base64,${base64}`
+      const elapsed = Date.now() - startTime
+      console.log(`[PDF] Image processed: ${filename} (${buffer.byteLength} → ${jpegBuffer.length} bytes, ${elapsed}ms)`)
+
+      return `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`
     } catch (sharpError) {
-      console.warn('Sharp failed to process image:', url, sharpError)
+      console.error(`[PDF] Sharp failed to process: ${filename}`, sharpError)
       return null
     }
   } catch (error) {
-    console.warn('Failed to fetch image:', url, error)
+    const elapsed = Date.now() - startTime
+    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      console.error(`[PDF] Image fetch timeout after ${elapsed}ms: ${filename}`)
+    } else {
+      console.error(`[PDF] Image fetch error: ${filename}`, error)
+    }
     return null
   }
 }
@@ -91,6 +105,13 @@ export async function GET(
     const shareUrl = `${protocol}://${host}/share/${shareLink.token}`
 
     // Pre-fetch all images and convert to base64 to avoid hanging during PDF render
+    // Count total images for logging
+    const totalImages = claim.items.reduce(
+      (count, item) => count + item.attachments.filter((a) => a.mimeType.startsWith('image/')).length,
+      0
+    )
+    console.log(`[PDF] Processing claim ${claim.claimNumber} with ${totalImages} images...`)
+
     const processedClaim = {
       ...claim,
       items: await Promise.all(
@@ -99,7 +120,7 @@ export async function GET(
           attachments: await Promise.all(
             item.attachments.map(async (att) => {
               if (att.mimeType.startsWith('image/')) {
-                const base64Url = await fetchImageAsBase64(att.url)
+                const base64Url = await fetchImageAsBase64(att.url, att.filename)
                 return { ...att, base64Url }
               }
               return { ...att, base64Url: null }
@@ -108,6 +129,13 @@ export async function GET(
         }))
       ),
     }
+
+    // Log success/failure summary
+    const successCount = processedClaim.items.reduce(
+      (count, item) => count + item.attachments.filter((a) => a.base64Url).length,
+      0
+    )
+    console.log(`[PDF] Images embedded: ${successCount}/${totalImages}`)
 
     // Render PDF to buffer
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

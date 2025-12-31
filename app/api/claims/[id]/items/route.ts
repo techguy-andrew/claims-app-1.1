@@ -11,19 +11,18 @@ export async function POST(
     const body = await request.json()
     const { title, description } = body
 
-    // Get the current max order for items in this claim
-    const maxOrder = await prisma.item.aggregate({
+    // Shift all existing items down to make room at the top
+    await prisma.item.updateMany({
       where: { claimId },
-      _max: { order: true },
+      data: { order: { increment: 1 } },
     })
 
-    const newOrder = (maxOrder._max.order ?? -1) + 1
-
+    // Create new item at order 0 (top of list)
     const item = await prisma.item.create({
       data: {
         title: title || '',
         description: description || '',
-        order: body.order ?? newOrder,
+        order: 0,
         claimId,
       },
       include: {

@@ -317,7 +317,8 @@ export function ItemCard({
           )}
 
           <div className={cn(
-            "flex flex-col gap-2 sm:gap-3 min-w-0 flex-1 select-none cursor-default",
+            "flex flex-col gap-2 sm:gap-3 min-w-0 flex-1",
+            !isEditing && "select-none cursor-default",  // Only disable selection when NOT editing (fixes iOS keyboard)
             !readOnly && (editable || onEdit || onDelete || onDuplicate) && "pr-12 sm:pr-14"
           )}
             onDoubleClick={() => editable && !isEditing && !readOnly && handleEdit()}

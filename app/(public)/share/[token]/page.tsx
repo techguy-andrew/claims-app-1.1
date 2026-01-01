@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Reorder, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { ItemCard } from '@/_barron-agency/components/ItemCard'
 import { ClaimDetailsCard, type ClaimDetailsData } from '@/_barron-agency/components/ClaimDetailsCard'
+import { DownloadSharedClaimPDF } from '@/_barron-agency/components/DownloadSharedClaimPDF'
 import { EmptyState } from '@/_barron-agency/components/EmptyState'
 import { Card, CardContent } from '@/_barron-agency/components/Card'
 import { Skeleton } from '@/_barron-agency/components/Skeleton'
@@ -95,6 +96,14 @@ export default function SharedClaimPage({
     <div className="min-h-screen bg-background">
       <TopBar disableBrandLink />
       <div className="px-8 pt-24 pb-8 space-y-6">
+        {/* Header with claim number and download button */}
+        {claim && (
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold">Claim #{claim.claimNumber}</h1>
+            <DownloadSharedClaimPDF token={token} claimNumber={claim.claimNumber} />
+          </div>
+        )}
+
         {/* Claim Info Card */}
         {claim && (
           <ClaimDetailsCard

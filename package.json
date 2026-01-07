@@ -11,9 +11,7 @@
     "stop-servers": "tsx app/barron-agency/scripts/stop-servers.ts",
     "push:client": "tsx _barron-agency/scripts/push-to-github/push-client.ts",
     "push:demo": "tsx _barron-agency/scripts/push-to-github/push-demo.ts",
-    "push:all": "tsx _barron-agency/scripts/push-to-github/push-all.ts",
-    "migrate:cloudinary": "npx tsx --env-file=.env scripts/migrate-to-cloudinary.ts",
-    "migrate:cloudinary:dry": "npx tsx --env-file=.env scripts/migrate-to-cloudinary.ts --dry-run"
+    "push:all": "tsx _barron-agency/scripts/push-to-github/push-all.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.940.0",

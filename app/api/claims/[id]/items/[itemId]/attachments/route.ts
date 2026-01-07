@@ -1,27 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { uploadToR2, getPublicUrl } from "@/lib/r2";
-import sharp from "sharp";
-import heicConvert from "heic-convert";
+import { uploadToCloudinary, isImageFile, getCloudinaryThumbnailUrl } from "@/lib/cloudinary";
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 /**
- * Check if a file is HEIC/HEIF format (iPhone photos)
- */
-function isHeicFile(mimeType: string, filename: string): boolean {
-  const lowerName = filename.toLowerCase();
-  return (
-    mimeType === "image/heic" ||
-    mimeType === "image/heif" ||
-    lowerName.endsWith(".heic") ||
-    lowerName.endsWith(".heif")
-  );
-}
-
-/**
  * POST /api/claims/[id]/items/[itemId]/attachments
- * Upload file to R2 and save attachment metadata
+ * Upload file to Cloudinary (images) or R2 (documents)
  */
 export async function POST(
   request: Request,
@@ -55,80 +41,69 @@ export async function POST(
       );
     }
 
-    // Get original file data
-    let buffer = Buffer.from(await file.arrayBuffer());
-    let processedMimeType = file.type;
-    let processedFilename = file.name;
-    let processedExt = file.name.split(".").pop() || "bin";
-
-    // Convert HEIC/HEIF to JPEG (browsers can't render HEIC)
-    if (isHeicFile(file.type, file.name)) {
-      try {
-        console.log(`Converting HEIC file: ${file.name}`);
-        const jpegBuffer = await heicConvert({
-          buffer: buffer,
-          format: "JPEG",
-          quality: 0.9,
-        });
-        buffer = Buffer.from(jpegBuffer);
-        processedMimeType = "image/jpeg";
-        processedFilename = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
-        processedExt = "jpg";
-        console.log(`HEIC conversion successful: ${processedFilename}`);
-      } catch (heicError) {
-        console.error("HEIC conversion failed:", heicError);
-        // Continue with original - will fail to display but data preserved
-      }
-    }
-
-    // Generate unique key
+    // Get file data
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const ext = file.name.split(".").pop() || "bin";
+    const baseFilename = file.name.replace(/\.[^/.]+$/, "");
     const randomId = Math.random().toString(36).substring(2, 10);
-    const key = `claims/${claimId}/${itemId}/${Date.now()}-${randomId}.${processedExt}`;
 
-    // Upload to R2
-    await uploadToR2(key, buffer, processedMimeType);
+    // Route based on file type: images → Cloudinary, documents → R2
+    if (isImageFile(file.type, file.name)) {
+      // CLOUDINARY PATH for images
+      // Cloudinary handles HEIC/HEIF conversion automatically
+      const folder = `claims/${claimId}/${itemId}`;
+      const filename = `${Date.now()}-${randomId}-${baseFilename}`;
 
-    // Generate URLs
-    const url = getPublicUrl(key);
-    const isImage = processedMimeType.startsWith("image/");
-    let thumbnailUrl: string | null = null;
+      const result = await uploadToCloudinary(buffer, { folder, filename });
 
-    // Generate and upload thumbnail for images only
-    if (isImage) {
-      try {
-        const thumbnailBuffer = await sharp(buffer)
-          .rotate() // Auto-rotate based on EXIF orientation
-          .resize(300, 300, { fit: "cover", position: "center" })
-          .jpeg({ quality: 80 })
-          .toBuffer();
+      // Generate thumbnail URL using Cloudinary transforms
+      const thumbnailUrl = getCloudinaryThumbnailUrl(result.url);
 
-        const thumbnailKey = `claims/${claimId}/${itemId}/${Date.now()}-${randomId}-thumb.jpg`;
-        await uploadToR2(thumbnailKey, thumbnailBuffer, "image/jpeg");
-        thumbnailUrl = getPublicUrl(thumbnailKey);
-      } catch (thumbError) {
-        console.warn("Failed to generate image thumbnail, using full URL:", thumbError);
-        thumbnailUrl = url; // Fallback to full URL if thumbnail generation fails
-      }
+      // Save attachment metadata
+      const attachment = await prisma.attachment.create({
+        data: {
+          itemId,
+          filename: file.name,
+          url: result.url,
+          thumbnailUrl,
+          mimeType: "image/jpeg", // Cloudinary converts to JPEG
+          size: result.bytes,
+          width: result.width || null,
+          height: result.height || null,
+          publicId: result.publicId,
+          version: null,
+          format: result.format,
+        },
+      });
+
+      return NextResponse.json(attachment, { status: 201 });
+    } else {
+      // R2 PATH for documents (PDF, DOC, etc.)
+      const key = `claims/${claimId}/${itemId}/${Date.now()}-${randomId}.${ext}`;
+
+      await uploadToR2(key, buffer, file.type);
+
+      const url = getPublicUrl(key);
+
+      // Save attachment metadata
+      const attachment = await prisma.attachment.create({
+        data: {
+          itemId,
+          filename: file.name,
+          url,
+          thumbnailUrl: null, // Documents don't have thumbnails
+          mimeType: file.type,
+          size: buffer.length,
+          width: null,
+          height: null,
+          publicId: key,
+          version: null,
+          format: ext,
+        },
+      });
+
+      return NextResponse.json(attachment, { status: 201 });
     }
-
-    // Save attachment metadata to database
-    const attachment = await prisma.attachment.create({
-      data: {
-        itemId,
-        filename: processedFilename,
-        url,
-        thumbnailUrl,
-        mimeType: processedMimeType,
-        size: buffer.length, // Use converted size
-        width: null,
-        height: null,
-        publicId: key,
-        version: null,
-        format: processedExt,
-      },
-    });
-
-    return NextResponse.json(attachment, { status: 201 });
   } catch (error) {
     console.error("Failed to upload attachment:", error);
     return NextResponse.json(

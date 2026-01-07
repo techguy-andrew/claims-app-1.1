@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { deleteFromR2, isR2File } from "@/lib/r2";
-import { cloudinary } from "@/lib/cloudinary";
+import { deleteFromR2 } from "@/lib/r2";
+import { deleteFromCloudinary, isCloudinaryUrl } from "@/lib/cloudinary";
 
 /**
  * DELETE /api/claims/[id]/items/[itemId]/attachments/[attachmentId]
@@ -32,14 +32,14 @@ export async function DELETE(
       );
     }
 
-    // Delete from storage (R2 or Cloudinary based on key format)
+    // Delete from storage based on URL (Cloudinary URLs contain cloudinary.com)
     try {
-      if (isR2File(attachment.publicId)) {
-        // R2 file - delete from R2
-        await deleteFromR2(attachment.publicId);
+      if (isCloudinaryUrl(attachment.url)) {
+        // Cloudinary file (new or legacy)
+        await deleteFromCloudinary(attachment.publicId);
       } else {
-        // Legacy Cloudinary file - delete from Cloudinary
-        await cloudinary.uploader.destroy(attachment.publicId);
+        // R2 file
+        await deleteFromR2(attachment.publicId);
       }
     } catch (storageError) {
       // Log but don't fail - file might already be deleted
